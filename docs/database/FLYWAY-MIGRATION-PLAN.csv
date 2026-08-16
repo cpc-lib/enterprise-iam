@@ -1,0 +1,37 @@
+﻿service,version,migration,scope
+iam-identity-service,V1,identity_baseline,"tenant,user,identity,role,user_role"
+iam-identity-service,V2,identity_infrastructure,"outbox,idempotency,consume_record"
+iam-identity-service,V3,identity_indexes,indexes
+iam-organization-service,V1,organization_baseline,"organization,team,member,team_role,member_role"
+iam-organization-service,V2,organization_infrastructure,"outbox,idempotency,consume_record"
+iam-organization-service,V3,organization_indexes,indexes
+iam-authorization-service,V1,authorization_resource_model,"application,service,resource,operation,resource_operation,permission"
+iam-authorization-service,V2,authorization_grant_model,"role_permission,team_role_permission,condition_policy"
+iam-authorization-service,V3,authorization_data_scope,data_scope bindings
+iam-authorization-service,V4,authorization_field_permission,"resource_field,mask,field policies"
+iam-authorization-service,V5,authorization_api_mapping,api definition/mapping/security
+iam-authorization-service,V6,authorization_direct_temporary_grant,"direct,temp grants"
+iam-authorization-service,V7,authorization_permission_version,permission versions
+iam-authorization-service,V8,authorization_snapshot,snapshot
+iam-authorization-service,V9,authorization_infrastructure,"outbox,idempotency,consume_record"
+iam-authorization-service,V10,authorization_indexes,indexes
+iam-sharing-service,V1,sharing_baseline,"share,operations,fields"
+iam-sharing-service,V2,sharing_policy_basis_history,"policy,basis,history"
+iam-sharing-service,V3,sharing_projection_epoch,projection epoch
+iam-sharing-service,V4,sharing_infrastructure,"outbox,idempotency,consume_record"
+iam-sharing-service,V5,sharing_indexes,indexes
+iam-auth-service,V1,auth_baseline,"password credential,session,refresh,user security state"
+iam-auth-service,V2,session_projection_outbox,"durable projection event,lease,retry,dead state"
+iam-auth-service,V3,auth_one_time_token,planned reset/invite tokens
+iam-auth-service,V4,auth_idempotency_consume,planned idempotency/consume record
+iam-auth-service,V5,auth_indexes,planned supplementary indexes
+iam-audit-service,V1,audit_login_admin,login/admin
+iam-audit-service,V2,audit_permission_authorization,permission/authz
+iam-audit-service,V3,audit_resource_sensitive,resource/field
+iam-audit-service,V4,audit_security_infrastructure,security/infra logs
+iam-audit-service,V5,audit_infrastructure_tables,outbox/consume
+iam-audit-service,V6,audit_indexes,indexes
+iam-job-service,V1,job_business_record,job business record
+iam-job-service,V2,job_infrastructure,outbox/consume
+iam-job-service,V3,job_indexes,indexes
+iam-authorization-service,V11,authorization_share_security_epoch,share revoke security fence / epoch

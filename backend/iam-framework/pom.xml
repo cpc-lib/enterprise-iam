@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.enterprise.iam</groupId>
+        <artifactId>enterprise-iam-backend</artifactId>
+        <version>1.10.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <artifactId>iam-framework</artifactId>
+    <packaging>pom</packaging>
+    <name>Enterprise IAM Framework</name>
+    <modules>
+        <module>iam-common-core</module>
+        <module>iam-common-web</module>
+        <module>iam-common-tenant</module>
+        <module>iam-common-security</module>
+        <module>iam-common-mybatis</module>
+        <module>iam-common-redis</module>
+        <module>iam-common-mq</module>
+        <module>iam-common-lock</module>
+        <module>iam-common-transaction</module>
+        <module>iam-common-observability</module>
+        <module>iam-authorization-client-spring-boot-starter</module>
+        <module>iam-api-discovery-spring-boot-starter</module>
+        <module>iam-security-spring-boot-starter</module>
+        <module>iam-data-permission-spring-boot-starter</module>
+        <module>iam-field-permission-spring-boot-starter</module>
+        <module>iam-idempotent-spring-boot-starter</module>
+        <module>iam-outbox-spring-boot-starter</module>
+        <module>iam-audit-spring-boot-starter</module>
+    </modules>
+</project>

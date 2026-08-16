@@ -1,0 +1,484 @@
+openapi: 3.1.0
+info:
+  title: Enterprise IAM CODE PHASE 02 Policy API
+  version: 1.2.0
+  license: {name: Proprietary, identifier: LicenseRef-Proprietary}
+  description: Organization, TeamRole, data-scope and field-policy commands.
+servers:
+  - url: https://iam.example.invalid
+tags:
+  - {name: Organization, description: Tenant organization hierarchy.}
+  - {name: Team, description: Team membership and TeamRole administration.}
+  - {name: DataScope, description: Row-level access policy administration.}
+  - {name: FieldPolicy, description: Field read write hide and mask administration.}
+
+paths:
+  /admin/v1/organizations:
+    post:
+      tags: [Organization]
+      operationId: createOrganization
+      summary: Create an organization node
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/CreateOrganization'}
+      responses:
+        '201': {$ref: '#/components/responses/EntityCreated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /admin/v1/teams:
+    post:
+      tags: [Team]
+      operationId: createTeam
+      summary: Create a team node
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody: {$ref: '#/components/requestBodies/CreateTeam'}
+      responses:
+        '201': {$ref: '#/components/responses/EntityCreated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /admin/v1/teams/{teamId}/move:
+    post:
+      tags: [Team]
+      operationId: moveTeam
+      summary: Move a team within its tenant tree
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MoveTeamRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/EntityUpdated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /admin/v1/teams/{teamId}/members/{userId}:
+    put:
+      tags: [Team]
+      operationId: addTeamMember
+      summary: Add a user to a team
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {$ref: '#/components/parameters/UserId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody: {$ref: '#/components/requestBodies/VersionCommand'}
+      responses:
+        '204': {description: Membership is active; duplicate call is idempotent.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    delete:
+      tags: [Team]
+      operationId: removeTeamMember
+      summary: Remove a user from a team
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {$ref: '#/components/parameters/UserId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {$ref: '#/components/parameters/IfMatchVersion'}
+      responses:
+        '204': {description: Membership and dependent member-role bindings revoked.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /admin/v1/teams/{teamId}/roles:
+    post:
+      tags: [Team]
+      operationId: createTeamRole
+      summary: Create a role scoped to a team
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateTeamRoleRequest'}
+      responses:
+        '201': {$ref: '#/components/responses/EntityCreated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /admin/v1/teams/{teamId}/members/{userId}/roles/{teamRoleId}:
+    put:
+      tags: [Team]
+      operationId: bindTeamMemberRole
+      summary: Bind a TeamRole to a team member
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/TeamId'}
+        - {$ref: '#/components/parameters/UserId'}
+        - {$ref: '#/components/parameters/TeamRoleId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody: {$ref: '#/components/requestBodies/VersionCommand'}
+      responses:
+        '204': {description: Binding active; team and membership invariants verified.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /admin/v1/team-roles/{teamRoleId}/permissions:
+    put:
+      tags: [Team]
+      operationId: replaceTeamRolePermissions
+      summary: Replace a TeamRole permission set
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/TeamRoleId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReplacePermissionSetRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/PermissionVersionUpdated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /admin/v1/data-scopes:
+    post:
+      tags: [DataScope]
+      operationId: createDataScope
+      summary: Create a typed data scope
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateDataScopeRequest'}
+      responses:
+        '201': {$ref: '#/components/responses/EntityCreated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /admin/v1/role-permissions/{rolePermissionId}/data-scopes:
+    put:
+      tags: [DataScope]
+      operationId: replaceRolePermissionDataScopes
+      summary: Replace data scopes on a role permission
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/RolePermissionId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReplaceDataScopesRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/PermissionVersionUpdated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /admin/v1/resources/{resourceId}/fields:
+    put:
+      tags: [FieldPolicy]
+      operationId: replaceResourceFields
+      summary: Replace protected resource field metadata
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ResourceId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReplaceResourceFieldsRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/EntityUpdated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /admin/v1/field-policies:
+    post:
+      tags: [FieldPolicy]
+      operationId: createFieldPolicy
+      summary: Create a field policy
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateFieldPolicyRequest'}
+      responses:
+        '201': {$ref: '#/components/responses/EntityCreated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /admin/v1/role-permissions/{rolePermissionId}/field-policies:
+    put:
+      tags: [FieldPolicy]
+      operationId: replaceRolePermissionFieldPolicies
+      summary: Replace field policies on a role permission
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/RolePermissionId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReplaceFieldPoliciesRequest'}
+      responses:
+        '200': {$ref: '#/components/responses/PermissionVersionUpdated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /internal/v1/authorization/effective-policies:
+    post:
+      tags: [DataScope, FieldPolicy]
+      operationId: resolveEffectivePolicies
+      summary: Resolve bound data and field policy plans
+      security: [{internalService: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EffectivePolicyRequest'}
+      responses:
+        '200':
+          description: Bound, short-lived server policy-plan references.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EffectivePolicyResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+    internalService: {type: mutualTLS}
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: {type: string, minLength: 20, maxLength: 128}
+    IfMatchVersion:
+      name: If-Match-Version
+      in: header
+      required: true
+      schema: {type: integer, minimum: 0}
+    TeamId: {name: teamId, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    UserId: {name: userId, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    TeamRoleId: {name: teamRoleId, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    RolePermissionId: {name: rolePermissionId, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    ResourceId: {name: resourceId, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+  requestBodies:
+    VersionCommand:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/VersionCommand'}}}
+    CreateOrganization:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/CreateOrganizationRequest'}}}
+    CreateTeam:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/CreateTeamRequest'}}}
+  responses:
+    EntityCreated:
+      description: Entity created.
+      content: {application/json: {schema: {$ref: '#/components/schemas/EntityResponse'}}}
+    EntityUpdated:
+      description: Entity updated.
+      content: {application/json: {schema: {$ref: '#/components/schemas/EntityResponse'}}}
+    PermissionVersionUpdated:
+      description: Policy bindings updated and permission version advanced.
+      content: {application/json: {schema: {$ref: '#/components/schemas/PermissionVersionResponse'}}}
+    BadRequest: {description: Invalid request., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Unauthorized: {description: Authentication failed., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Forbidden: {description: Authorization denied., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    NotFound: {description: Absent or deliberately hidden., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Conflict: {description: State/version/idempotency conflict., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Unprocessable: {description: Domain invariant failed., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Unavailable: {description: Security dependency unavailable; failed closed., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+  schemas:
+    Id:
+      type: string
+      pattern: '^[1-9][0-9]{0,18}$'
+      maxLength: 19
+      description: Positive signed 64-bit decimal ID; the numeric value MUST be at most 9223372036854775807.
+      x-iam-numeric-maximum: 9223372036854775807
+    VersionCommand:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties: {version: {type: integer, minimum: 0}}
+    CreateOrganizationRequest:
+      type: object
+      additionalProperties: false
+      required: [orgCode, orgName]
+      properties:
+        orgCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{2,63}$'}
+        orgName: {type: string, minLength: 1, maxLength: 128}
+        parentId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+    CreateTeamRequest:
+      type: object
+      additionalProperties: false
+      required: [organizationId, teamCode, teamName]
+      properties:
+        organizationId: {$ref: '#/components/schemas/Id'}
+        parentTeamId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+        teamCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{2,63}$'}
+        teamName: {type: string, minLength: 1, maxLength: 128}
+    MoveTeamRequest:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        newParentTeamId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+        version: {type: integer, minimum: 0}
+    CreateTeamRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [roleCode, roleName]
+      properties:
+        roleCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{2,63}$'}
+        roleName: {type: string, minLength: 1, maxLength: 128}
+        description: {type: [string, 'null'], maxLength: 500}
+    ReplacePermissionSetRequest:
+      type: object
+      additionalProperties: false
+      required: [version, permissionIds]
+      properties:
+        version: {type: integer, minimum: 0}
+        permissionIds: {type: array, uniqueItems: true, maxItems: 1000, items: {$ref: '#/components/schemas/Id'}}
+    CreateDataScopeRequest:
+      type: object
+      additionalProperties: false
+      required: [scopeCode, scopeName, scopeType]
+      properties:
+        scopeCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{2,63}$'}
+        scopeName: {type: string, minLength: 1, maxLength: 128}
+        scopeType: {type: string, enum: [ALL, SELF, TEAM, TEAM_AND_CHILDREN, SPECIFIED_TEAM, SHARED, CUSTOM_POLICY]}
+        customPolicyId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+    DataScopeBinding:
+      type: object
+      additionalProperties: false
+      required: [dataScopeId, mergeMode, teamIds]
+      properties:
+        dataScopeId: {$ref: '#/components/schemas/Id'}
+        mergeMode: {type: string, enum: [UNION, INTERSECT]}
+        teamIds: {type: array, uniqueItems: true, maxItems: 500, items: {$ref: '#/components/schemas/Id'}}
+        includeChildren: {type: boolean, default: false}
+    ReplaceDataScopesRequest:
+      type: object
+      additionalProperties: false
+      required: [bindingVersion, bindings]
+      properties:
+        bindingVersion: {type: integer, minimum: 0}
+        bindings: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/DataScopeBinding'}}
+    ResourceField:
+      type: object
+      additionalProperties: false
+      required: [fieldCode, propertyPath, dataType, sensitiveLevel, systemManaged]
+      properties:
+        fieldCode: {type: string, pattern: '^[A-Za-z][A-Za-z0-9_]{0,63}$'}
+        propertyPath: {type: string, pattern: '^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*){0,7}$'}
+        columnName: {type: [string, 'null'], pattern: '^[A-Za-z][A-Za-z0-9_]{0,63}$'}
+        dataType: {type: string, enum: [STRING, NUMBER, BOOLEAN, DATE, DATETIME, OBJECT, ARRAY]}
+        sensitiveLevel: {type: string, enum: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]}
+        systemManaged: {type: boolean}
+    ReplaceResourceFieldsRequest:
+      type: object
+      additionalProperties: false
+      required: [resourceVersion, fields]
+      properties:
+        resourceVersion: {type: integer, minimum: 0}
+        fields: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/ResourceField'}}
+    CreateFieldPolicyRequest:
+      type: object
+      additionalProperties: false
+      required: [resourceId, operationId, fieldId, readable, writable, hidden, priority]
+      properties:
+        resourceId: {$ref: '#/components/schemas/Id'}
+        operationId: {$ref: '#/components/schemas/Id'}
+        fieldId: {$ref: '#/components/schemas/Id'}
+        readable: {type: boolean}
+        writable: {type: boolean}
+        hidden: {type: boolean}
+        maskStrategyId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+        priority: {type: integer, minimum: -10000, maximum: 10000}
+    ReplaceFieldPoliciesRequest:
+      type: object
+      additionalProperties: false
+      required: [bindingVersion, fieldPolicyIds]
+      properties:
+        bindingVersion: {type: integer, minimum: 0}
+        fieldPolicyIds: {type: array, uniqueItems: true, maxItems: 1000, items: {$ref: '#/components/schemas/Id'}}
+    EffectivePolicyRequest:
+      type: object
+      additionalProperties: false
+      required: [tenantId, subjectId, resourceId, operationId, permissionVersion, requestId]
+      properties:
+        tenantId: {$ref: '#/components/schemas/Id'}
+        subjectId: {$ref: '#/components/schemas/Id'}
+        resourceId: {$ref: '#/components/schemas/Id'}
+        operationId: {$ref: '#/components/schemas/Id'}
+        permissionVersion: {type: integer, minimum: 0}
+        requestId: {type: string, minLength: 8, maxLength: 128}
+    EffectivePolicyResponse:
+      type: object
+      additionalProperties: false
+      required: [decision, permissionVersion, expiresAt]
+      properties:
+        decision: {type: string, enum: [ALLOW, DENY]}
+        permissionVersion: {type: integer, minimum: 0}
+        dataPredicateRef: {type: [string, 'null'], maxLength: 256}
+        fieldReadPlanRef: {type: [string, 'null'], maxLength: 256}
+        fieldWritePlanRef: {type: [string, 'null'], maxLength: 256}
+        expiresAt: {type: string, format: date-time}
+    EntityResponse:
+      type: object
+      additionalProperties: false
+      required: [id, version, status]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        version: {type: integer, minimum: 0}
+        status: {type: string}
+    PermissionVersionResponse:
+      type: object
+      additionalProperties: false
+      required: [bindingVersion, permissionVersion]
+      properties:
+        bindingVersion: {type: integer, minimum: 1}
+        permissionVersion: {type: integer, minimum: 1}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, traceId]
+      properties:
+        success: {const: false}
+        code: {type: string, pattern: '^IAM_[A-Z0-9_]+$'}
+        message: {type: string, maxLength: 500}
+        traceId: {type: string}

@@ -1,0 +1,60 @@
+﻿epic,story,title,points,target,dependencies,acceptance
+E01,S01,Root Maven Reactor,1,Week1,None,mvn clean verify succeeds
+E01,S02,Dependency BOM,2,Week1,S01,core versions centralized
+E02,S10,MySQL Infrastructure,2,Week2,S01,all IAM databases healthy
+E02,S11,Redis Infrastructure,1,Week2,None,Redis health green
+E02,S12,RabbitMQ Infrastructure,2,Week2,None,publish/consume smoke passes
+E02,S13,Nacos Infrastructure,2,Week3,None,service registration works
+E03,S20,Identity Flyway,3,Week5,S10,empty DB migration passes
+E03,S22,User Aggregate/Repository,3,Week5,S20,tenant isolation + optimistic lock
+E04,S32,Login,5,Week5-6,"S22,S11",valid login/session/JWT works
+E04,S35,Refresh Rotation,5,Week6,S32,concurrent refresh safe
+E05,S46,API Discovery,3,Week7,S13,API definitions discovered idempotently
+E05,S47,API Mapping,3,Week7,S46,"unmapped deny, mapped works"
+E06,S51,RolePermission Binding,3,Week8,S20,grant binding persists/versioned
+E06,S55,Merge Engine,5,Week8,S51,golden merge tests pass
+E06,S59,RBAC Closed Loop,5,Week9,"S32,S47,S55",grant allow revoke deny without relogin
+E07,S68,Team Closed Loop,5,Week9-10,S59,teamrole allow then remove deny
+E08,S73,Data Permission SQL Interceptor,5,Week10,S59,AST rewrite fail closed
+E08,S80,Data Permission Closed Loop,5,Week11,S73,list/detail/count/update isolation
+E09,S85,Field Write Guard,3,Week12,S59,manual forbidden field write denied
+E09,S87,Response Field Filter,3,Week12,S85,mask/hidden before JSON
+E10,S93,Create Share,5,Week13,S59,subset validation + outbox
+E10,S96,Projection Epoch,5,Week14,S93,stale projection cannot preserve allow
+E10,S101,Share Closed Loop,5,Week14,S96,share allow revoke immediate deny
+E11,S110,HTTP Idempotency,5,Week15,S20,concurrent duplicate safe
+E11,S113,Outbox,3,Week15,S12,business+outbox atomic
+E11,S115,MQ Consumer Dedup,3,Week16,S113,duplicates safe
+E12,S127,Authorization Explain,5,Week20,S55,same decision as authorize
+E13,S143,React Refresh Single Flight,3,Week17,S35,20x401 -> one refresh
+E13,S151,Permission Matrix,5,Week18,S51,dynamic operations no permission strings
+E13,S154,Share UI,3,Week19,S93,create/revoke flow usable
+E14,S161,Playwright Golden Loops,5,Week21,MVP/Beta,release loops green
+E14,S162,Security Abuse Suite,5,Week22,S161,release-blocking abuses green
+E14,S165,Full Docker Compose,5,Week23,all services,full stack healthy
+E14,S170,V1.0 Release,5,Week24,all gates,release checklist pass
+E15,S180,File service/module,2,Week25,S01,file module in reactor build
+E15,S181,File Flyway,2,Week25,S180,iam_file baseline migration passes
+E15,S182,MinIO client abstraction,2,Week25,S180,minio testcontainer smoke passes
+E15,S183,File object/logical file,3,Week25,"S181,S182",dedup + tenant isolation green
+E15,S184,Upload session,3,Week26,S183,server chunk plan authoritative
+E15,S185,Multipart part signing,2,Week26,S184,scoped presigned part url short ttl
+E15,S186,Resume state,2,Week26,S184,missing parts resume works
+E15,S187,Complete/merge,5,Week26,"S185,S186",CAS complete + merge recovery
+E15,S188,Instant upload,3,Week27,S183,hash+size instant create
+E15,S189,File reference,2,Week27,S183,reference hijack denied
+E15,S190,Download/preview auth,3,Week27,"S183,S59",tenant+iam+state+scan+storage policy
+E15,S191,React uploader,3,Week27,"S184,S143",worker upload flow usable
+E15,S192,Hash worker,2,Week27,S191,incremental sha256 in worker
+E15,S193,Pause/resume/retry,3,Week28,S192,offline pause resume works
+E15,S194,File management pages,3,Week28,"S190,S191",file pages usable
+E15,S195,Cleanup/reconcile jobs,3,Week28,S187,orphan cleanup jobs green
+E15,S196,Scan SPI,3,Week28,S190,scan state machine + quarantine noop adapter
+E15,S197,File E2E/security,5,Week28,"S187,S188,S190",file e2e + security suites green
+E15,S198,Preview Policy,2,Week28,S190,direct/safe/no-preview decision enforced
+E15,S199,Safe Preview Worker SPI,2,Week28,S198,sandboxed render via spi only
+E15,S200,Download Security Modes,3,Week28,S190,presigned vs proxy policy enforced
+E15,S201,File Scan Pipeline,3,Week28,S196,scan failure blocks download
+E15,S202,Lifecycle / Retention,3,Week28,S195,archive/purge policy enforced
+E15,S203,Storage Reconcile,3,Week28,S195,inventory reconcile green
+E15,S204,File DR / Restore Drill,3,Week28,S203,restore drill recorded

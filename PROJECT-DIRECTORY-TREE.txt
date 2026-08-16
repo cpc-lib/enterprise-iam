@@ -1,0 +1,1671 @@
+enterprise-iam-spec-v1.10.1-contract-hardening
+├── .editorconfig
+├── .github
+│   └── workflows
+│       ├── .gitkeep
+│       ├── backend-build.yml
+│       └── contract-quality.yml
+├── .gitignore
+├── CHANGELOG.md
+├── CODE-READY-1.1-CHANGELOG.md
+├── CODE-READY-1.10-CHANGELOG.md
+├── CODE-READY-1.10.1-CHANGELOG.md
+├── CODE-READY-1.2-CHANGELOG.md
+├── CODE-READY-1.3-CHANGELOG.md
+├── CODE-READY-1.4-CHANGELOG.md
+├── CODE-READY-1.5-CHANGELOG.md
+├── CODE-READY-1.6-CHANGELOG.md
+├── CODE-READY-1.7-CHANGELOG.md
+├── CODE-READY-1.8-CHANGELOG.md
+├── CODE-READY-1.9-CHANGELOG.md
+├── PROJECT-DIRECTORY-TREE.txt
+├── README.md
+├── backend
+│   ├── README.md
+│   ├── iam-audit-service
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── audit
+│   │       │   │                   ├── AuditApplication.java
+│   │       │   │                   ├── application
+│   │       │   │                   │   ├── assembler
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── command
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── dto
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── query
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── service
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── domain
+│   │       │   │                   │   ├── aggregate
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── entity
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── event
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── policy
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── service
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── valueobject
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── infrastructure
+│   │       │   │                   │   ├── config
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── mq
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── persistence
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── dataobject
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   ├── mapper
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   └── query
+│   │       │   │                   │   │       └── .gitkeep
+│   │       │   │                   │   ├── redis
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── rpc
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   └── interfaces
+│   │       │   │                       ├── internal
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── job
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── message
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       └── rest
+│   │       │   │                           └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── .gitkeep
+│   │       │       ├── application.yml
+│   │       │       └── db
+│   │       │           └── migration
+│   │       │               ├── .gitkeep
+│   │       │               └── README.md
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── audit
+│   │           │                   ├── AuditApplicationTest.java
+│   │           │                   └── LayeredArchitectureTest.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-auth-service
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── auth
+│   │       │   │                   ├── AuthApplication.java
+│   │       │   │                   ├── application
+│   │       │   │                   │   ├── assembler
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── command
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   └── LoginCommand.java
+│   │       │   │                   │   ├── dto
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   ├── AuthenticationAttempt.java
+│   │       │   │                   │   │   ├── IssuedLoginSession.java
+│   │       │   │                   │   │   ├── LoginFailureReason.java
+│   │       │   │                   │   │   ├── LoginResult.java
+│   │       │   │                   │   │   └── SensitiveRefreshToken.java
+│   │       │   │                   │   ├── port
+│   │       │   │                   │   │   └── out
+│   │       │   │                   │   │       ├── AuthenticationAttemptSink.java
+│   │       │   │                   │   │       ├── CredentialRepository.java
+│   │       │   │                   │   │       ├── LoginIdentityDirectory.java
+│   │       │   │                   │   │       ├── LoginSessionIssuer.java
+│   │       │   │                   │   │       ├── PasswordVerifier.java
+│   │       │   │                   │   │       ├── PositiveIdGenerator.java
+│   │       │   │                   │   │       ├── ProjectionWriteResult.java
+│   │       │   │                   │   │       ├── SessionProjectionOutboxAppender.java
+│   │       │   │                   │   │       └── SessionSecurityProjectionPublisher.java
+│   │       │   │                   │   ├── query
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── service
+│   │       │   │                   │       ├── .gitkeep
+│   │       │   │                   │       └── AuthenticateLoginUseCase.java
+│   │       │   │                   ├── domain
+│   │       │   │                   │   ├── aggregate
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── entity
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── event
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── CredentialSnapshot.java
+│   │       │   │                   │   │   ├── IdentityType.java
+│   │       │   │                   │   │   └── ResolvedLoginIdentity.java
+│   │       │   │                   │   ├── policy
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── service
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── valueobject
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── infrastructure
+│   │       │   │                   │   ├── config
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── SessionIssuanceConfiguration.java
+│   │       │   │                   │   │   └── SessionIssuanceProperties.java
+│   │       │   │                   │   ├── mq
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── outbox
+│   │       │   │                   │   │   ├── JdbcSessionProjectionOutboxAppender.java
+│   │       │   │                   │   │   ├── SessionProjectionEventCodec.java
+│   │       │   │                   │   │   ├── SessionProjectionEventFormatException.java
+│   │       │   │                   │   │   ├── SessionProjectionOutboxConfiguration.java
+│   │       │   │                   │   │   ├── SessionProjectionOutboxEventHandler.java
+│   │       │   │                   │   │   └── SessionProjectionOutboxPayload.java
+│   │       │   │                   │   ├── persistence
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── SessionIssuanceException.java
+│   │       │   │                   │   │   ├── SessionLimitExceededException.java
+│   │       │   │                   │   │   ├── TimeOrderedPositiveIdGenerator.java
+│   │       │   │                   │   │   ├── TransactionalJdbcLoginSessionIssuer.java
+│   │       │   │                   │   │   ├── dataobject
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   ├── mapper
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   └── query
+│   │       │   │                   │   │       └── .gitkeep
+│   │       │   │                   │   ├── redis
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── RedisSessionSecurityProjectionPublisher.java
+│   │       │   │                   │   │   └── SessionProjectionPublicationException.java
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── rpc
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── security
+│   │       │   │                   │       ├── Argon2idPasswordVerifier.java
+│   │       │   │                   │       ├── HmacSha256RefreshTokenHasher.java
+│   │       │   │                   │       ├── RefreshTokenHashKey.java
+│   │       │   │                   │       ├── RefreshTokenHashingException.java
+│   │       │   │                   │       └── SecureOpaqueRefreshTokenGenerator.java
+│   │       │   │                   └── interfaces
+│   │       │   │                       ├── internal
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── job
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── message
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       └── rest
+│   │       │   │                           └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── .gitkeep
+│   │       │       ├── application.yml
+│   │       │       └── db
+│   │       │           └── migration
+│   │       │               ├── .gitkeep
+│   │       │               ├── README.md
+│   │       │               ├── V1__auth_baseline.sql
+│   │       │               └── V2__session_projection_outbox.sql
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── auth
+│   │           │                   ├── AuthApplicationTest.java
+│   │           │                   ├── LayeredArchitectureTest.java
+│   │           │                   ├── application
+│   │           │                   │   ├── model
+│   │           │                   │   │   └── SensitiveTokenRedactionTest.java
+│   │           │                   │   └── service
+│   │           │                   │       └── AuthenticateLoginUseCaseTest.java
+│   │           │                   └── infrastructure
+│   │           │                       ├── config
+│   │           │                       │   ├── SessionIssuanceConfigurationTest.java
+│   │           │                       │   └── SessionIssuancePropertiesTest.java
+│   │           │                       ├── outbox
+│   │           │                       │   ├── JdbcSessionProjectionOutboxAppenderTest.java
+│   │           │                       │   ├── SessionProjectionEventCodecTest.java
+│   │           │                       │   └── SessionProjectionOutboxEventHandlerTest.java
+│   │           │                       ├── persistence
+│   │           │                       │   ├── FlywayMigrationIT.java
+│   │           │                       │   ├── TimeOrderedPositiveIdGeneratorTest.java
+│   │           │                       │   └── TransactionalJdbcLoginSessionIssuerIT.java
+│   │           │                       ├── redis
+│   │           │                       │   └── RedisSessionSecurityProjectionPublisherTest.java
+│   │           │                       └── security
+│   │           │                           ├── Argon2idPasswordVerifierTest.java
+│   │           │                           └── RefreshTokenSecurityTest.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-authorization-service
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── authorization
+│   │       │   │                   ├── AuthorizationApplication.java
+│   │       │   │                   ├── application
+│   │       │   │                   │   ├── assembler
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── command
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── dto
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── query
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── service
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── domain
+│   │       │   │                   │   ├── aggregate
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── entity
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── event
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── AuthorizationDecision.java
+│   │       │   │                   │   │   ├── AuthorizationFacts.java
+│   │       │   │                   │   │   ├── AuthorizationReason.java
+│   │       │   │                   │   │   ├── AuthorizationRequest.java
+│   │       │   │                   │   │   ├── AuthorizationResult.java
+│   │       │   │                   │   │   ├── GrantEffect.java
+│   │       │   │                   │   │   └── ResolvedGrant.java
+│   │       │   │                   │   ├── policy
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── service
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   └── DefaultAuthorizationEngine.java
+│   │       │   │                   │   └── valueobject
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── infrastructure
+│   │       │   │                   │   ├── config
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── mq
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── persistence
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── dataobject
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   ├── mapper
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   └── query
+│   │       │   │                   │   │       └── .gitkeep
+│   │       │   │                   │   ├── redis
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── rpc
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   └── interfaces
+│   │       │   │                       ├── internal
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── job
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── message
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       └── rest
+│   │       │   │                           └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── .gitkeep
+│   │       │       ├── application.yml
+│   │       │       └── db
+│   │       │           └── migration
+│   │       │               ├── .gitkeep
+│   │       │               ├── README.md
+│   │       │               └── V1__authorization_rbac_baseline.sql
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── authorization
+│   │           │                   ├── AuthorizationApplicationTest.java
+│   │           │                   ├── LayeredArchitectureTest.java
+│   │           │                   ├── domain
+│   │           │                   │   ├── model
+│   │           │                   │   │   └── AuthorizationRequestTest.java
+│   │           │                   │   └── service
+│   │           │                   │       └── DefaultAuthorizationEngineTest.java
+│   │           │                   └── infrastructure
+│   │           │                       └── persistence
+│   │           │                           └── FlywayMigrationIT.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-dependencies
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   └── .gitkeep
+│   │       │   └── resources
+│   │       │       └── .gitkeep
+│   │       └── test
+│   │           ├── java
+│   │           │   └── .gitkeep
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-file-service
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── file
+│   │       │   │                   ├── FileApplication.java
+│   │       │   │                   ├── application
+│   │       │   │                   │   ├── assembler
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── command
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── dto
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── query
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── service
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── domain
+│   │       │   │                   │   ├── aggregate
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── entity
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── event
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── policy
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── service
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── valueobject
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── infrastructure
+│   │       │   │                   │   ├── config
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── mq
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── persistence
+│   │       │   │                   │   │   ├── dataobject
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   ├── mapper
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   └── query
+│   │       │   │                   │   │       └── .gitkeep
+│   │       │   │                   │   ├── redis
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── storage
+│   │       │   │                   │       └── minio
+│   │       │   │                   │           └── .gitkeep
+│   │       │   │                   └── interfaces
+│   │       │   │                       ├── internal
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── job
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── message
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       └── rest
+│   │       │   │                           └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── application.yml
+│   │       │       └── db
+│   │       │           └── migration
+│   │       │               └── README.md
+│   │       └── test
+│   │           └── java
+│   │               └── com
+│   │                   └── enterprise
+│   │                       └── iam
+│   │                           └── file
+│   │                               ├── FileApplicationTest.java
+│   │                               └── LayeredArchitectureTest.java
+│   ├── iam-framework
+│   │   ├── iam-api-discovery-spring-boot-starter
+│   │   │   ├── README.md
+│   │   │   └── pom.xml
+│   │   ├── iam-audit-spring-boot-starter
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-authorization-client-spring-boot-starter
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-common-core
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   ├── .gitkeep
+│   │   │       │   │   └── com
+│   │   │       │   │       └── enterprise
+│   │   │       │   │           └── iam
+│   │   │       │   │               └── common
+│   │   │       │   │                   └── core
+│   │   │       │   │                       └── context
+│   │   │       │   │                           └── TraceId.java
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               ├── .gitkeep
+│   │   │               └── com
+│   │   │                   └── enterprise
+│   │   │                       └── iam
+│   │   │                           └── common
+│   │   │                               └── core
+│   │   │                                   └── context
+│   │   │                                       └── TraceIdTest.java
+│   │   ├── iam-common-lock
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-common-mq
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-common-mybatis
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-common-observability
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-common-redis
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-common-security
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   ├── .gitkeep
+│   │   │       │   │   └── com
+│   │   │       │   │       └── enterprise
+│   │   │       │   │           └── iam
+│   │   │       │   │               └── common
+│   │   │       │   │                   └── security
+│   │   │       │   │                       ├── access
+│   │   │       │   │                       │   ├── AccessTokenClaims.java
+│   │   │       │   │                       │   ├── AccessTokenDecoder.java
+│   │   │       │   │                       │   ├── AccessTokenJwkSetLoader.java
+│   │   │       │   │                       │   ├── AccessTokenPolicy.java
+│   │   │       │   │                       │   ├── AccessTokenPublicKeyResolver.java
+│   │   │       │   │                       │   ├── AccessTokenSigner.java
+│   │   │       │   │                       │   ├── AccessTokenSigningException.java
+│   │   │       │   │                       │   ├── AccessTokenSigningRequest.java
+│   │   │       │   │                       │   ├── AccessTokenValidationFailure.java
+│   │   │       │   │                       │   ├── AccessTokenValidationResult.java
+│   │   │       │   │                       │   ├── Es256AccessTokenDecoder.java
+│   │   │       │   │                       │   ├── Es256AccessTokenSigner.java
+│   │   │       │   │                       │   ├── RefreshingJwkSetAccessTokenPublicKeyResolver.java
+│   │   │       │   │                       │   ├── SignedAccessToken.java
+│   │   │       │   │                       │   └── VerifiedAccessToken.java
+│   │   │       │   │                       ├── delegation
+│   │   │       │   │                       │   ├── DelegationJwkSetLoader.java
+│   │   │       │   │                       │   ├── DelegationKeyResolutionException.java
+│   │   │       │   │                       │   ├── DelegationPublicKeyResolver.java
+│   │   │       │   │                       │   ├── DelegationSigningRequest.java
+│   │   │       │   │                       │   ├── DelegationTokenClaims.java
+│   │   │       │   │                       │   ├── DelegationTokenDecoder.java
+│   │   │       │   │                       │   ├── DelegationTokenPolicy.java
+│   │   │       │   │                       │   ├── DelegationTokenSigningException.java
+│   │   │       │   │                       │   ├── DelegationValidationFailure.java
+│   │   │       │   │                       │   ├── DelegationValidationResult.java
+│   │   │       │   │                       │   ├── Es256DelegationTokenDecoder.java
+│   │   │       │   │                       │   ├── Es256DelegationTokenSigner.java
+│   │   │       │   │                       │   ├── RefreshingJwkSetDelegationPublicKeyResolver.java
+│   │   │       │   │                       │   └── TrustedRequestContext.java
+│   │   │       │   │                       ├── headers
+│   │   │       │   │                       │   └── UntrustedIdentityHeaders.java
+│   │   │       │   │                       ├── jwt
+│   │   │       │   │                       │   ├── BoundedRefreshingJwkSetPublicKeyResolver.java
+│   │   │       │   │                       │   ├── Es256PublicKeyResolver.java
+│   │   │       │   │                       │   ├── JwkSetKeyResolutionException.java
+│   │   │       │   │                       │   ├── JwkSetLoader.java
+│   │   │       │   │                       │   └── P256Keys.java
+│   │   │       │   │                       └── session
+│   │   │       │   │                           ├── SessionProjectionFormatException.java
+│   │   │       │   │                           ├── SessionProjectionSchema.java
+│   │   │       │   │                           ├── SessionProjectionStatus.java
+│   │   │       │   │                           └── SessionSecurityProjection.java
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               ├── .gitkeep
+│   │   │               └── com
+│   │   │                   └── enterprise
+│   │   │                       └── iam
+│   │   │                           └── common
+│   │   │                               └── security
+│   │   │                                   ├── access
+│   │   │                                   │   ├── Es256AccessTokenDecoderTest.java
+│   │   │                                   │   └── Es256AccessTokenSignerTest.java
+│   │   │                                   ├── delegation
+│   │   │                                   │   ├── DelegationTokenPolicyTest.java
+│   │   │                                   │   ├── Es256DelegationTokenCodecTest.java
+│   │   │                                   │   └── RefreshingJwkSetDelegationPublicKeyResolverTest.java
+│   │   │                                   └── session
+│   │   │                                       └── SessionProjectionSchemaTest.java
+│   │   ├── iam-common-tenant
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-common-transaction
+│   │   │   ├── README.md
+│   │   │   └── pom.xml
+│   │   ├── iam-common-web
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-data-permission-spring-boot-starter
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-field-permission-spring-boot-starter
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-idempotent-spring-boot-starter
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   └── .gitkeep
+│   │   │       │   └── resources
+│   │   │       │       └── .gitkeep
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               └── .gitkeep
+│   │   ├── iam-outbox-spring-boot-starter
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   ├── .gitkeep
+│   │   │       │   │   └── com
+│   │   │       │   │       └── enterprise
+│   │   │       │   │           └── iam
+│   │   │       │   │               └── outbox
+│   │   │       │   │                   ├── JdbcOutboxRepository.java
+│   │   │       │   │                   ├── JdbcOutboxWriter.java
+│   │   │       │   │                   ├── MicrometerOutboxRelayObserver.java
+│   │   │       │   │                   ├── OutboxAutoConfiguration.java
+│   │   │       │   │                   ├── OutboxEvent.java
+│   │   │       │   │                   ├── OutboxEventHandler.java
+│   │   │       │   │                   ├── OutboxEventToAppend.java
+│   │   │       │   │                   ├── OutboxHandlerRegistry.java
+│   │   │       │   │                   ├── OutboxLeaseLostException.java
+│   │   │       │   │                   ├── OutboxNonRetryableException.java
+│   │   │       │   │                   ├── OutboxRelay.java
+│   │   │       │   │                   ├── OutboxRelayObserver.java
+│   │   │       │   │                   ├── OutboxRelayOutcome.java
+│   │   │       │   │                   ├── OutboxRelayProperties.java
+│   │   │       │   │                   ├── OutboxRelaySchedulingConfiguration.java
+│   │   │       │   │                   ├── OutboxRepository.java
+│   │   │       │   │                   ├── OutboxRetryPolicy.java
+│   │   │       │   │                   ├── OutboxWriter.java
+│   │   │       │   │                   └── ScheduledOutboxRelay.java
+│   │   │       │   └── resources
+│   │   │       │       ├── .gitkeep
+│   │   │       │       └── META-INF
+│   │   │       │           └── spring
+│   │   │       │               └── org.springframework.boot.autoconfigure.AutoConfiguration.imports
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               ├── .gitkeep
+│   │   │               └── com
+│   │   │                   └── enterprise
+│   │   │                       └── iam
+│   │   │                           └── outbox
+│   │   │                               ├── JdbcOutboxWriterTest.java
+│   │   │                               ├── OutboxAutoConfigurationTest.java
+│   │   │                               ├── OutboxEventTest.java
+│   │   │                               ├── OutboxHandlerRegistryTest.java
+│   │   │                               ├── OutboxRelayTest.java
+│   │   │                               └── OutboxRetryPolicyTest.java
+│   │   ├── iam-security-spring-boot-starter
+│   │   │   ├── README.md
+│   │   │   ├── pom.xml
+│   │   │   └── src
+│   │   │       ├── main
+│   │   │       │   ├── java
+│   │   │       │   │   ├── .gitkeep
+│   │   │       │   │   └── com
+│   │   │       │   │       └── enterprise
+│   │   │       │   │           └── iam
+│   │   │       │   │               └── security
+│   │   │       │   │                   ├── autoconfigure
+│   │   │       │   │                   │   ├── IamDelegationSecurityAutoConfiguration.java
+│   │   │       │   │                   │   └── IamDelegationSecurityProperties.java
+│   │   │       │   │                   └── delegation
+│   │   │       │   │                       ├── PathPatternDelegationRequestMatcher.java
+│   │   │       │   │                       ├── RequestTraceIdResolver.java
+│   │   │       │   │                       └── TrustedDelegationFilter.java
+│   │   │       │   └── resources
+│   │   │       │       ├── .gitkeep
+│   │   │       │       └── META-INF
+│   │   │       │           └── spring
+│   │   │       │               └── org.springframework.boot.autoconfigure.AutoConfiguration.imports
+│   │   │       └── test
+│   │   │           └── java
+│   │   │               ├── .gitkeep
+│   │   │               └── com
+│   │   │                   └── enterprise
+│   │   │                       └── iam
+│   │   │                           └── security
+│   │   │                               ├── autoconfigure
+│   │   │                               │   └── IamDelegationSecurityAutoConfigurationTest.java
+│   │   │                               └── delegation
+│   │   │                                   ├── PathPatternDelegationRequestMatcherTest.java
+│   │   │                                   └── TrustedDelegationFilterTest.java
+│   │   └── pom.xml
+│   ├── iam-gateway
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── gateway
+│   │       │   │                   ├── GatewayApplication.java
+│   │       │   │                   ├── api_mapping
+│   │       │   │                   │   └── .gitkeep
+│   │       │   │                   ├── authentication
+│   │       │   │                   │   └── .gitkeep
+│   │       │   │                   ├── authorization
+│   │       │   │                   │   └── .gitkeep
+│   │       │   │                   ├── config
+│   │       │   │                   │   ├── .gitkeep
+│   │       │   │                   │   ├── GatewayAccessAuthenticationConfiguration.java
+│   │       │   │                   │   ├── GatewayAccessAuthenticationProperties.java
+│   │       │   │                   │   ├── GatewayDelegationConfiguration.java
+│   │       │   │                   │   └── GatewayDelegationProperties.java
+│   │       │   │                   ├── delegation
+│   │       │   │                   │   ├── .gitkeep
+│   │       │   │                   │   ├── AuthenticatedGatewayPrincipal.java
+│   │       │   │                   │   ├── ConfiguredDownstreamRouteAudienceRegistry.java
+│   │       │   │                   │   ├── DownstreamRouteAudienceRegistry.java
+│   │       │   │                   │   ├── Es256GatewayDelegationTokenIssuer.java
+│   │       │   │                   │   ├── GatewayDelegationFilter.java
+│   │       │   │                   │   └── GatewayDelegationTokenIssuer.java
+│   │       │   │                   ├── rate_limit
+│   │       │   │                   │   └── .gitkeep
+│   │       │   │                   ├── route
+│   │       │   │                   │   └── .gitkeep
+│   │       │   │                   ├── security
+│   │       │   │                   │   ├── AuthoritativeReactiveSessionStateVerifier.java
+│   │       │   │                   │   ├── DefaultGatewayRequestIdResolver.java
+│   │       │   │                   │   ├── ExternalIdentityHeaderSanitizingFilter.java
+│   │       │   │                   │   ├── GatewayAccessAuthenticationFilter.java
+│   │       │   │                   │   ├── GatewayRequestIdResolver.java
+│   │       │   │                   │   ├── GatewaySecurityErrorWriter.java
+│   │       │   │                   │   ├── ReactiveSessionSnapshotReader.java
+│   │       │   │                   │   ├── ReactiveSessionStateVerifier.java
+│   │       │   │                   │   ├── RedisReactiveSessionSnapshotReader.java
+│   │       │   │                   │   ├── SessionStateVerification.java
+│   │       │   │                   │   └── jwks
+│   │       │   │                   │       ├── AllowlistedHttpsAccessTokenJwkSetLoader.java
+│   │       │   │                   │       ├── JavaHttpClientJwksTransport.java
+│   │       │   │                   │       ├── JwksDnsResolver.java
+│   │       │   │                   │       ├── JwksHttpResponse.java
+│   │       │   │                   │       ├── JwksHttpTransport.java
+│   │       │   │                   │       ├── JwksTransportException.java
+│   │       │   │                   │       └── SystemJwksDnsResolver.java
+│   │       │   │                   ├── security_header
+│   │       │   │                   │   └── .gitkeep
+│   │       │   │                   └── trace
+│   │       │   │                       └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── .gitkeep
+│   │       │       └── application.yml
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── gateway
+│   │           │                   ├── GatewayApplicationTest.java
+│   │           │                   ├── LayeredArchitectureTest.java
+│   │           │                   ├── config
+│   │           │                   │   └── GatewayAccessAuthenticationConfigurationTest.java
+│   │           │                   ├── delegation
+│   │           │                   │   ├── ConfiguredDownstreamRouteAudienceRegistryTest.java
+│   │           │                   │   └── GatewayDelegationFilterTest.java
+│   │           │                   └── security
+│   │           │                       ├── AuthoritativeReactiveSessionStateVerifierTest.java
+│   │           │                       ├── ExternalIdentityHeaderSanitizingFilterTest.java
+│   │           │                       ├── GatewayAccessAuthenticationFilterTest.java
+│   │           │                       ├── RedisReactiveSessionSnapshotReaderTest.java
+│   │           │                       └── jwks
+│   │           │                           └── AllowlistedHttpsAccessTokenJwkSetLoaderTest.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-identity-service
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── identity
+│   │       │   │                   ├── IdentityApplication.java
+│   │       │   │                   ├── application
+│   │       │   │                   │   ├── assembler
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── command
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── dto
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── query
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── service
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── domain
+│   │       │   │                   │   ├── aggregate
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── entity
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── event
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── policy
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── service
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── valueobject
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── infrastructure
+│   │       │   │                   │   ├── config
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── mq
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── persistence
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── dataobject
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   ├── mapper
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   └── query
+│   │       │   │                   │   │       └── .gitkeep
+│   │       │   │                   │   ├── redis
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── rpc
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   └── interfaces
+│   │       │   │                       ├── internal
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── job
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── message
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       └── rest
+│   │       │   │                           └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── .gitkeep
+│   │       │       ├── application.yml
+│   │       │       └── db
+│   │       │           └── migration
+│   │       │               ├── .gitkeep
+│   │       │               ├── README.md
+│   │       │               └── V1__identity_baseline.sql
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── identity
+│   │           │                   ├── IdentityApplicationTest.java
+│   │           │                   ├── LayeredArchitectureTest.java
+│   │           │                   └── infrastructure
+│   │           │                       └── persistence
+│   │           │                           └── FlywayMigrationIT.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-job-service
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── job
+│   │       │   │                   ├── JobApplication.java
+│   │       │   │                   ├── application
+│   │       │   │                   │   ├── assembler
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── command
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── dto
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── query
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── service
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── domain
+│   │       │   │                   │   ├── aggregate
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── entity
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── event
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── policy
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── service
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── valueobject
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── infrastructure
+│   │       │   │                   │   ├── config
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── mq
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── persistence
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── dataobject
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   ├── mapper
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   └── query
+│   │       │   │                   │   │       └── .gitkeep
+│   │       │   │                   │   ├── redis
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── rpc
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   └── interfaces
+│   │       │   │                       ├── internal
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── job
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── message
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       └── rest
+│   │       │   │                           └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── .gitkeep
+│   │       │       ├── application.yml
+│   │       │       └── db
+│   │       │           └── migration
+│   │       │               ├── .gitkeep
+│   │       │               └── README.md
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── job
+│   │           │                   ├── JobApplicationTest.java
+│   │           │                   └── LayeredArchitectureTest.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-organization-service
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── organization
+│   │       │   │                   ├── OrganizationApplication.java
+│   │       │   │                   ├── application
+│   │       │   │                   │   ├── assembler
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── command
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── dto
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── query
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── service
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── domain
+│   │       │   │                   │   ├── aggregate
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── entity
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── event
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── policy
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── service
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── valueobject
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── infrastructure
+│   │       │   │                   │   ├── config
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── mq
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── persistence
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── dataobject
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   ├── mapper
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   └── query
+│   │       │   │                   │   │       └── .gitkeep
+│   │       │   │                   │   ├── redis
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── rpc
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   └── interfaces
+│   │       │   │                       ├── internal
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── job
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── message
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       └── rest
+│   │       │   │                           └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── .gitkeep
+│   │       │       ├── application.yml
+│   │       │       └── db
+│   │       │           └── migration
+│   │       │               ├── .gitkeep
+│   │       │               └── README.md
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── organization
+│   │           │                   ├── LayeredArchitectureTest.java
+│   │           │                   └── OrganizationApplicationTest.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-sharing-service
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── sharing
+│   │       │   │                   ├── SharingApplication.java
+│   │       │   │                   ├── application
+│   │       │   │                   │   ├── assembler
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── command
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── dto
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── query
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── service
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── domain
+│   │       │   │                   │   ├── aggregate
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── entity
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── event
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── model
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── policy
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── service
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── valueobject
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   ├── infrastructure
+│   │       │   │                   │   ├── config
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── mq
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── persistence
+│   │       │   │                   │   │   ├── .gitkeep
+│   │       │   │                   │   │   ├── dataobject
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   ├── mapper
+│   │       │   │                   │   │   │   └── .gitkeep
+│   │       │   │                   │   │   └── query
+│   │       │   │                   │   │       └── .gitkeep
+│   │       │   │                   │   ├── redis
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   ├── repository
+│   │       │   │                   │   │   └── .gitkeep
+│   │       │   │                   │   └── rpc
+│   │       │   │                   │       └── .gitkeep
+│   │       │   │                   └── interfaces
+│   │       │   │                       ├── internal
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── job
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       ├── message
+│   │       │   │                       │   └── .gitkeep
+│   │       │   │                       └── rest
+│   │       │   │                           └── .gitkeep
+│   │       │   └── resources
+│   │       │       ├── .gitkeep
+│   │       │       ├── application.yml
+│   │       │       └── db
+│   │       │           └── migration
+│   │       │               ├── .gitkeep
+│   │       │               └── README.md
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── sharing
+│   │           │                   ├── LayeredArchitectureTest.java
+│   │           │                   └── SharingApplicationTest.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   ├── iam-test-support
+│   │   ├── README.md
+│   │   ├── pom.xml
+│   │   └── src
+│   │       ├── main
+│   │       │   ├── java
+│   │       │   │   ├── .gitkeep
+│   │       │   │   └── com
+│   │       │   │       └── enterprise
+│   │       │   │           └── iam
+│   │       │   │               └── testsupport
+│   │       │   │                   ├── architecture
+│   │       │   │                   │   └── LayeredArchitectureRules.java
+│   │       │   │                   └── database
+│   │       │   │                       └── MySqlIntegrationDatabase.java
+│   │       │   └── resources
+│   │       │       └── .gitkeep
+│   │       └── test
+│   │           ├── java
+│   │           │   ├── .gitkeep
+│   │           │   └── com
+│   │           │       └── enterprise
+│   │           │           └── iam
+│   │           │               └── testsupport
+│   │           │                   └── database
+│   │           │                       └── MySqlIntegrationDatabaseTest.java
+│   │           └── resources
+│   │               └── .gitkeep
+│   └── pom.xml
+├── deploy
+│   ├── docker
+│   │   ├── compose
+│   │   │   └── .gitkeep
+│   │   ├── minio
+│   │   │   └── .gitkeep
+│   │   ├── mysql
+│   │   │   └── .gitkeep
+│   │   ├── nacos
+│   │   │   └── .gitkeep
+│   │   ├── nginx
+│   │   │   └── .gitkeep
+│   │   ├── powerjob
+│   │   │   └── .gitkeep
+│   │   ├── rabbitmq
+│   │   │   └── .gitkeep
+│   │   ├── redis
+│   │   │   └── .gitkeep
+│   │   └── seata
+│   │       └── .gitkeep
+│   ├── env
+│   │   ├── .env.example
+│   │   └── .gitkeep
+│   └── scripts
+│       ├── .gitkeep
+│       ├── health-check.ps1
+│       ├── start-infra.ps1
+│       └── stop-infra.ps1
+├── docs
+│   ├── adr
+│   │   ├── 0001-permission-as-data.md
+│   │   ├── 0002-no-business-permission-hardcoding.md
+│   │   ├── 0003-gateway-and-downstream-pep.md
+│   │   ├── 0004-authorization-read-model.md
+│   │   ├── 0005-local-outbox.md
+│   │   ├── 0006-share-local-projection.md
+│   │   ├── 0007-short-lived-jwt-session.md
+│   │   ├── 0008-fail-closed.md
+│   │   ├── 0009-saga-before-seata.md
+│   │   └── 0010-monorepo.md
+│   ├── api
+│   │   ├── .gitkeep
+│   │   ├── ERROR-CODES.md
+│   │   ├── README.md
+│   │   ├── openapi-code-phase-01.yaml
+│   │   ├── openapi-code-phase-02-policy.yaml
+│   │   └── openapi-code-phase-03-sharing-file.yaml
+│   ├── architecture
+│   │   ├── APPLICATION-COMMAND-AGGREGATE-MATRIX.csv
+│   │   ├── APPLICATION-DOMAIN-ARCHITECTURE.md
+│   │   ├── DOMAIN-EVENT-CATALOG.csv
+│   │   ├── FILE-MANAGEMENT-ARCHITECTURE.md
+│   │   ├── FINAL-CONSISTENCY-REVIEW.md
+│   │   ├── FINAL-FREEZE-MANIFEST.json
+│   │   ├── FREEZE-CONTENT-SHA256.txt
+│   │   ├── PERSISTENCE-ARCHITECTURE.md
+│   │   ├── PROJECT-ARCHITECTURE.md
+│   │   ├── QUALITY-ASSESSMENT-1.10.1.md
+│   │   ├── QUALITY-ASSESSMENT-1.10.md
+│   │   ├── QUALITY-ASSESSMENT-1.3.md
+│   │   ├── QUALITY-ASSESSMENT-1.4.md
+│   │   ├── QUALITY-ASSESSMENT-1.5.md
+│   │   ├── QUALITY-ASSESSMENT-1.6.md
+│   │   ├── QUALITY-ASSESSMENT-1.7.md
+│   │   ├── QUALITY-ASSESSMENT-1.8.md
+│   │   ├── QUALITY-ASSESSMENT-1.9.md
+│   │   ├── REQUIREMENTS-TRACEABILITY.csv
+│   │   ├── SERVICE-INTERACTION-MATRIX.md
+│   │   ├── authorization-runtime.md
+│   │   ├── cache-and-version.md
+│   │   ├── container-architecture.md
+│   │   ├── data-ownership.md
+│   │   ├── deployment-topology.md
+│   │   ├── event-architecture.md
+│   │   └── system-context.md
+│   ├── database
+│   │   ├── .gitkeep
+│   │   ├── DATABASE-TOPOLOGY.md
+│   │   ├── FLYWAY-MIGRATION-PLAN.csv
+│   │   ├── REPOSITORY-CONTRACT-MATRIX.csv
+│   │   ├── TABLE-OWNERSHIP.md
+│   │   ├── code-phase-01
+│   │   │   ├── README.md
+│   │   │   ├── auth
+│   │   │   │   ├── V1__auth_baseline.sql
+│   │   │   │   └── V2__session_projection_outbox.sql
+│   │   │   ├── authorization
+│   │   │   │   └── V1__authorization_rbac_baseline.sql
+│   │   │   └── identity
+│   │   │       └── V1__identity_baseline.sql
+│   │   └── code-phase-02
+│   │       ├── README.md
+│   │       ├── authorization
+│   │       │   └── V2__authorization_policy_baseline.sql
+│   │       ├── file
+│   │       │   └── V1__file_security_baseline.sql
+│   │       ├── organization
+│   │       │   └── V1__organization_team_baseline.sql
+│   │       └── sharing
+│   │           └── V1__sharing_security_baseline.sql
+│   ├── deployment
+│   │   └── .gitkeep
+│   ├── diagrams
+│   │   └── .gitkeep
+│   ├── events
+│   │   ├── README.md
+│   │   ├── asyncapi-code-phase-01.yaml
+│   │   └── asyncapi-code-phase-02-v1.yaml
+│   ├── observability
+│   │   ├── METRIC-CATALOG.csv
+│   │   └── SLO-BASELINE.md
+│   ├── operations
+│   │   ├── INCIDENT-SEVERITY.md
+│   │   └── runbooks
+│   │       ├── authorization-latency.md
+│   │       ├── authorization-unavailable.md
+│   │       ├── dlq-growth.md
+│   │       ├── file-object-missing.md
+│   │       ├── file-scan-backlog.md
+│   │       ├── infected-file.md
+│   │       ├── login-failure-spike.md
+│   │       ├── mysql-slow.md
+│   │       ├── outbox-backlog.md
+│   │       ├── presigned-url-leak.md
+│   │       ├── projection-gap.md
+│   │       ├── rabbitmq-outage.md
+│   │       ├── redis-session-failure.md
+│   │       ├── refresh-reuse-spike.md
+│   │       ├── security-event-spike.md
+│   │       ├── share-revoke-inconsistency.md
+│   │       └── storage-capacity-critical.md
+│   ├── planning
+│   │   ├── CODE-PHASE-ENTRY-GATE.md
+│   │   ├── MACHINE-CONTRACT-COVERAGE.md
+│   │   ├── OPEN-DECISIONS.md
+│   │   ├── STORY-TEMPLATE.md
+│   │   ├── V1-BACKLOG.csv
+│   │   └── V1-EPIC-ROADMAP.md
+│   ├── security
+│   │   ├── ABUSE-CASE-CATALOG.md
+│   │   ├── SECURITY-PARAMETERS.yaml
+│   │   ├── SECURITY-RELEASE-GATE.md
+│   │   ├── STANDARDS-BASELINE.md
+│   │   └── THREAT-MODEL-MATRIX.csv
+│   ├── spec
+│   │   ├── 01-project-overview.md
+│   │   ├── 02-domain-bounded-context.md
+│   │   ├── 03-rbac-model.md
+│   │   ├── 04-team-authorization.md
+│   │   ├── 05-resource-operation-model.md
+│   │   ├── 06-data-permission.md
+│   │   ├── 07-field-permission.md
+│   │   ├── 08-resource-sharing.md
+│   │   ├── 09-dynamic-api-authorization.md
+│   │   ├── 10-distributed-consistency.md
+│   │   ├── 11-database-design.md
+│   │   ├── 12-backend-architecture.md
+│   │   ├── 13-authorization-engine.md
+│   │   ├── 14-dynamic-data-permission-engine.md
+│   │   ├── 15-dynamic-field-permission-engine.md
+│   │   ├── 16-resource-sharing-cross-team-acl-engine.md
+│   │   ├── 17-authentication-session-security.md
+│   │   ├── 18-distributed-idempotency-consistency-framework.md
+│   │   ├── 19-audit,-explain-security-observability.md
+│   │   ├── 20-react-administration-console-architecture.md
+│   │   ├── 21-testing-strategy-quality-gate.md
+│   │   ├── 22-deployment,-docker-compose-runtime-architecture.md
+│   │   ├── 23-solo-developer-ai-plan.md
+│   │   ├── 24-final-repository-project-architecture-freeze.md
+│   │   ├── 25-business-closed-loop-end-to-end-workflow.md
+│   │   ├── 26-api-contract-business-state-machine-acceptance.md
+│   │   ├── 27-domain-event-transaction-boundary-service-interaction.md
+│   │   ├── 28-database-physical-schema-flyway-migration-plan.md
+│   │   ├── 29-query-model-repository-persistence-access.md
+│   │   ├── 30-application-service-command-query-domain-aggregate.md
+│   │   ├── 31-security-threat-model-abuse-case-matrix.md
+│   │   ├── 32-observability-slo-capacity-production-operations.md
+│   │   ├── 33-final-v1-implementation-backlog-story-mapping.md
+│   │   ├── 34-enterprise-file-management-instant-resumable-multipart-upload.md
+│   │   ├── 35-file-preview-download-security-scan-lifecycle-storage-dr.md
+│   │   ├── 36-final-consistency-review-code-phase-entry-freeze.md
+│   │   ├── 37-code-ready-implementation-contract-freeze.md
+│   │   ├── 38-core-v1-authorization-machine-contract-freeze.md
+│   │   ├── 39-backend-build-foundation-freeze.md
+│   │   ├── 40-code-phase-01-security-core-implementation-freeze.md
+│   │   ├── 41-authentication-and-delegation-crypto-implementation-freeze.md
+│   │   ├── 42-delegation-key-rotation-and-service-wiring-freeze.md
+│   │   ├── 43-gateway-access-authentication-and-session-fence-freeze.md
+│   │   ├── 44-https-jwks-and-redis-session-projection-freeze.md
+│   │   ├── 45-session-projection-transactional-outbox-freeze.md
+│   │   ├── 46-transactional-login-session-and-token-issuance-freeze.md
+│   │   └── README.md
+│   └── testing
+│       ├── .gitkeep
+│       ├── BUSINESS-CLOSED-LOOP-ACCEPTANCE.md
+│       ├── CODE-PHASE-01-ACCEPTANCE.md
+│       ├── CODE-PHASE-01-IMPLEMENTATION-EVIDENCE.md
+│       ├── CODE-PHASE-02-05-ACCEPTANCE.md
+│       ├── CONTRACT-QUALITY-GATE.md
+│       ├── LOCAL-VALIDATION-1.10.1.md
+│       ├── LOCAL-VALIDATION-1.10.md
+│       └── LOCAL-VALIDATION-1.9.md
+├── frontend
+│   ├── README.md
+│   └── iam-admin-ui
+│       ├── README.md
+│       ├── package.json
+│       └── src
+│           ├── api
+│           │   ├── audit
+│           │   │   └── .gitkeep
+│           │   ├── auth
+│           │   │   └── .gitkeep
+│           │   ├── authorization
+│           │   │   └── .gitkeep
+│           │   ├── client
+│           │   │   └── .gitkeep
+│           │   ├── identity
+│           │   │   └── .gitkeep
+│           │   ├── organization
+│           │   │   └── .gitkeep
+│           │   ├── security
+│           │   │   └── .gitkeep
+│           │   └── sharing
+│           │       └── .gitkeep
+│           ├── app
+│           │   ├── bootstrap
+│           │   │   └── .gitkeep
+│           │   ├── error-boundary
+│           │   │   └── .gitkeep
+│           │   ├── providers
+│           │   │   └── .gitkeep
+│           │   └── router
+│           │       └── .gitkeep
+│           ├── components
+│           │   ├── business
+│           │   │   └── .gitkeep
+│           │   ├── feedback
+│           │   │   └── .gitkeep
+│           │   ├── form
+│           │   │   └── .gitkeep
+│           │   ├── permission
+│           │   │   └── .gitkeep
+│           │   ├── security
+│           │   │   └── .gitkeep
+│           │   └── table
+│           │       └── .gitkeep
+│           ├── constants
+│           │   └── .gitkeep
+│           ├── features
+│           │   ├── audit-query
+│           │   │   └── .gitkeep
+│           │   ├── auth-explain
+│           │   │   └── .gitkeep
+│           │   ├── data-scope
+│           │   │   └── .gitkeep
+│           │   ├── field-policy
+│           │   │   └── .gitkeep
+│           │   ├── file-management
+│           │   │   ├── api
+│           │   │   │   └── .gitkeep
+│           │   │   ├── components
+│           │   │   │   ├── ChunkProgress
+│           │   │   │   │   └── .gitkeep
+│           │   │   │   ├── FilePreview
+│           │   │   │   │   └── .gitkeep
+│           │   │   │   ├── FileUploader
+│           │   │   │   │   └── .gitkeep
+│           │   │   │   ├── UploadProgress
+│           │   │   │   │   └── .gitkeep
+│           │   │   │   └── UploadQueue
+│           │   │   │       └── .gitkeep
+│           │   │   ├── hooks
+│           │   │   │   └── .gitkeep
+│           │   │   ├── pages
+│           │   │   │   └── .gitkeep
+│           │   │   ├── store
+│           │   │   │   └── .gitkeep
+│           │   │   ├── types
+│           │   │   │   └── .gitkeep
+│           │   │   └── workers
+│           │   │       └── .gitkeep
+│           │   ├── resource
+│           │   │   └── .gitkeep
+│           │   ├── resource-share
+│           │   │   └── .gitkeep
+│           │   ├── role
+│           │   │   └── .gitkeep
+│           │   ├── team
+│           │   │   └── .gitkeep
+│           │   └── user
+│           │       └── .gitkeep
+│           ├── hooks
+│           │   └── .gitkeep
+│           ├── layouts
+│           │   ├── AuthLayout
+│           │   │   └── .gitkeep
+│           │   ├── BasicLayout
+│           │   │   └── .gitkeep
+│           │   └── BlankLayout
+│           │       └── .gitkeep
+│           ├── pages
+│           │   ├── audit
+│           │   │   └── .gitkeep
+│           │   ├── auth
+│           │   │   └── .gitkeep
+│           │   ├── authorization
+│           │   │   └── .gitkeep
+│           │   ├── dashboard
+│           │   │   └── .gitkeep
+│           │   ├── identity
+│           │   │   └── .gitkeep
+│           │   ├── organization
+│           │   │   └── .gitkeep
+│           │   ├── security
+│           │   │   └── .gitkeep
+│           │   ├── sharing
+│           │   │   └── .gitkeep
+│           │   └── system
+│           │       └── .gitkeep
+│           ├── stores
+│           │   ├── app
+│           │   │   └── .gitkeep
+│           │   ├── auth
+│           │   │   └── .gitkeep
+│           │   ├── permission
+│           │   │   └── .gitkeep
+│           │   ├── tenant
+│           │   │   └── .gitkeep
+│           │   └── ui
+│           │       └── .gitkeep
+│           ├── styles
+│           │   └── .gitkeep
+│           ├── tests
+│           │   └── .gitkeep
+│           ├── types
+│           │   └── .gitkeep
+│           └── utils
+│               └── .gitkeep
+├── scripts
+│   └── .gitkeep
+├── tests
+│   ├── chaos
+│   │   └── .gitkeep
+│   ├── datasets
+│   │   └── .gitkeep
+│   ├── e2e
+│   │   ├── .gitkeep
+│   │   ├── business-closed-loop
+│   │   │   ├── audit-explain-loop.spec.ts
+│   │   │   ├── auth-session-loop.spec.ts
+│   │   │   ├── cross-team-share-loop.spec.ts
+│   │   │   ├── data-permission-loop.spec.ts
+│   │   │   ├── field-permission-loop.spec.ts
+│   │   │   ├── immediate-revoke.spec.ts
+│   │   │   ├── rbac-loop.spec.ts
+│   │   │   ├── team-role-loop.spec.ts
+│   │   │   ├── tenant-bootstrap.spec.ts
+│   │   │   └── user-onboarding.spec.ts
+│   │   └── file-management
+│   │       ├── concurrent-complete.spec.ts
+│   │       ├── cross-tenant-file-isolation.spec.ts
+│   │       ├── download-authorization.spec.ts
+│   │       ├── expired-upload-session.spec.ts
+│   │       ├── file-reference.spec.ts
+│   │       ├── hash-mismatch.spec.ts
+│   │       ├── instant-upload.spec.ts
+│   │       ├── normal-multipart-upload.spec.ts
+│   │       └── resume-upload.spec.ts
+│   ├── performance
+│   │   └── .gitkeep
+│   └── security
+│       ├── .gitkeep
+│       ├── abuse-cases
+│       │   └── .gitkeep
+│       ├── auth
+│       │   └── .gitkeep
+│       ├── authorization
+│       │   └── .gitkeep
+│       ├── data-permission
+│       │   └── .gitkeep
+│       ├── field-permission
+│       │   └── .gitkeep
+│       ├── file-management
+│       │   ├── cross-tenant-download.spec.ts
+│       │   ├── hash-enumeration.spec.ts
+│       │   ├── path-traversal-filename.spec.ts
+│       │   ├── presigned-url-scope.spec.ts
+│       │   ├── quarantined-download.spec.ts
+│       │   ├── quota-exhaustion.spec.ts
+│       │   └── reference-hijack.spec.ts
+│       ├── infrastructure
+│       │   └── .gitkeep
+│       ├── internal
+│       │   └── .gitkeep
+│       ├── replay
+│       │   └── .gitkeep
+│       ├── sharing
+│       │   └── .gitkeep
+│       └── tenant
+│           └── .gitkeep
+└── tools
+    ├── .gitkeep
+    ├── requirements-contracts.txt
+    ├── validate_access_authentication.py
+    ├── validate_auth_crypto.py
+    ├── validate_build_foundation.py
+    ├── validate_code_ready_spec.py
+    ├── validate_delegation_wiring.py
+    ├── validate_phase01_core.py
+    ├── validate_session_issuance.py
+    ├── validate_session_projection_outbox.py
+    └── validate_trust_adapters.py

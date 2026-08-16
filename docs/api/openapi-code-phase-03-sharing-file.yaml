@@ -1,0 +1,478 @@
+openapi: 3.1.0
+info:
+  title: Enterprise IAM CODE PHASE 03 Sharing and File API
+  version: 1.2.0
+  license: {name: Proprietary, identifier: LicenseRef-Proprietary}
+  description: Resource sharing, multipart upload, scan-gated access and file references.
+servers:
+  - url: https://iam.example.invalid
+tags:
+  - {name: Sharing, description: Resource share create reshare and revoke.}
+  - {name: FileUpload, description: Multipart upload and integrity lifecycle.}
+  - {name: FileAccess, description: File reference preview download and deletion.}
+
+paths:
+  /api/v1/shares:
+    post:
+      tags: [Sharing]
+      operationId: createResourceShare
+      summary: Create a resource-instance share
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateShareRequest'}}}
+      responses:
+        '201':
+          description: Share created in WAITING or ACTIVE state.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ShareResponse'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/shares/{shareId}/revoke:
+    post:
+      tags: [Sharing]
+      operationId: revokeResourceShare
+      summary: Revoke a share and commit its epoch fence
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ShareId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/RevokeShareRequest'}}}
+      responses:
+        '200':
+          description: Share/descendant security facts revoked and epoch fence committed.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ShareResponse'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/shares/{shareId}/reshare:
+    post:
+      tags: [Sharing]
+      operationId: reshareResource
+      summary: Create a bounded child share
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/ShareId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ReshareRequest'}}}
+      responses:
+        '201':
+          description: Child share created from intersection of current rights and parent.
+          content: {application/json: {schema: {$ref: '#/components/schemas/ShareResponse'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /api/v1/file-uploads:
+    post:
+      tags: [FileUpload]
+      operationId: createFileUploadSession
+      summary: Create a multipart or instant-upload session
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateUploadRequest'}}}
+      responses:
+        '201':
+          description: Multipart session created, or tenant-local instant-upload result returned.
+          content: {application/json: {schema: {$ref: '#/components/schemas/UploadSessionResponse'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+  /api/v1/file-uploads/{uploadId}/parts/{partNumber}/sign:
+    post:
+      tags: [FileUpload]
+      operationId: signFileUploadPart
+      summary: Issue a scoped part upload URL
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/UploadId'}
+        - {$ref: '#/components/parameters/PartNumber'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SignPartRequest'}}}
+      responses:
+        '200':
+          description: Short-lived URL scoped to this upload/part and expected size.
+          content: {application/json: {schema: {$ref: '#/components/schemas/SignPartResponse'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/v1/file-uploads/{uploadId}/parts/{partNumber}:
+    put:
+      tags: [FileUpload]
+      operationId: reportFileUploadPart
+      summary: Verify and record an uploaded part
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/UploadId'}
+        - {$ref: '#/components/parameters/PartNumber'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ReportPartRequest'}}}
+      responses:
+        '204': {description: Storage state verified and part recorded idempotently.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+  /api/v1/file-uploads/{uploadId}:
+    get:
+      tags: [FileUpload]
+      operationId: getFileUploadSession
+      summary: Retrieve resumable upload state
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/UploadId'}]
+      responses:
+        '200':
+          description: Resume state visible only to authorized tenant/user.
+          content: {application/json: {schema: {$ref: '#/components/schemas/UploadSessionResponse'}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    delete:
+      tags: [FileUpload]
+      operationId: abortFileUploadSession
+      summary: Abort an upload and release quota
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/UploadId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {$ref: '#/components/parameters/IfMatchVersion'}
+      responses:
+        '204': {description: Session aborted and reserved quota released.}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/v1/file-uploads/{uploadId}/complete:
+    post:
+      tags: [FileUpload]
+      operationId: completeFileUpload
+      summary: Complete and verify a multipart upload
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/UploadId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CompleteUploadRequest'}}}
+      responses:
+        '202':
+          description: Object merge/verification accepted; file remains unavailable until scan passes.
+          content: {application/json: {schema: {$ref: '#/components/schemas/FileResponse'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/files/{fileId}/references:
+    post:
+      tags: [FileAccess]
+      operationId: createFileReference
+      summary: Attach a logical file to a business resource
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/FileId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateFileReferenceRequest'}}}
+      responses:
+        '201':
+          description: Tenant-local authorized business reference created.
+          content: {application/json: {schema: {$ref: '#/components/schemas/EntityResponse'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/v1/files/{fileId}/download:
+    post:
+      tags: [FileAccess]
+      operationId: authorizeFileDownload
+      summary: Authorize a scan-gated file download
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/FileId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/FileAccessRequest'}}}
+      responses:
+        '200':
+          description: Authorized proxy token or short presigned URL metadata.
+          content: {application/json: {schema: {$ref: '#/components/schemas/FileAccessResponse'}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '423': {$ref: '#/components/responses/Locked'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/files/{fileId}/preview:
+    post:
+      tags: [FileAccess]
+      operationId: authorizeFilePreview
+      summary: Authorize a sandboxed file preview
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/FileId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/FileAccessRequest'}}}
+      responses:
+        '200':
+          description: Sandboxed preview access metadata.
+          content: {application/json: {schema: {$ref: '#/components/schemas/FileAccessResponse'}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '423': {$ref: '#/components/responses/Locked'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+  /api/v1/files/{fileId}/delete:
+    post:
+      tags: [FileAccess]
+      operationId: deleteLogicalFile
+      summary: Logically delete a file
+      security: [{bearerAuth: []}]
+      parameters:
+        - {$ref: '#/components/parameters/FileId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/DeleteFileRequest'}}}
+      responses:
+        '200':
+          description: Logical deletion committed; physical purge is separate.
+          content: {application/json: {schema: {$ref: '#/components/schemas/FileResponse'}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '423': {$ref: '#/components/responses/Locked'}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  parameters:
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 20, maxLength: 128}}
+    IfMatchVersion: {name: If-Match-Version, in: header, required: true, schema: {type: integer, minimum: 0}}
+    ShareId: {name: shareId, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    UploadId: {name: uploadId, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    FileId: {name: fileId, in: path, required: true, schema: {$ref: '#/components/schemas/Id'}}
+    PartNumber: {name: partNumber, in: path, required: true, schema: {type: integer, minimum: 1, maximum: 10000}}
+  responses:
+    BadRequest: {description: Invalid request., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Forbidden: {description: Authorization denied., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    NotFound: {description: Absent or deliberately hidden., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Conflict: {description: State/version/idempotency conflict., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Unprocessable: {description: Security or domain invariant failed., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    TooLarge: {description: File or part exceeds policy., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Locked: {description: File is scanning quarantined infected archived or held., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    TooManyRequests: {description: Quota or rate limit exceeded., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Unavailable: {description: Required security/storage dependency unavailable., content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+  schemas:
+    Id:
+      type: string
+      pattern: '^[1-9][0-9]{0,18}$'
+      maxLength: 19
+      description: Positive signed 64-bit decimal ID; the numeric value MUST be at most 9223372036854775807.
+      x-iam-numeric-maximum: 9223372036854775807
+    ShareTarget:
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type: {type: string, enum: [USER, TEAM]}
+        id: {$ref: '#/components/schemas/Id'}
+    ShareFieldGrant:
+      type: object
+      additionalProperties: false
+      required: [operationId, fieldId, readable, writable, hidden]
+      properties:
+        operationId: {$ref: '#/components/schemas/Id'}
+        fieldId: {$ref: '#/components/schemas/Id'}
+        readable: {type: boolean}
+        writable: {type: boolean}
+        hidden: {type: boolean}
+        maskStrategyId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+    CreateShareRequest:
+      type: object
+      additionalProperties: false
+      required: [resourceId, resourceInstanceKey, target, operationIds, fields, expireAt, canReshare]
+      properties:
+        resourceId: {$ref: '#/components/schemas/Id'}
+        resourceInstanceKey: {type: string, minLength: 1, maxLength: 128}
+        target: {$ref: '#/components/schemas/ShareTarget'}
+        operationIds: {type: array, minItems: 1, uniqueItems: true, maxItems: 100, items: {$ref: '#/components/schemas/Id'}}
+        fields: {type: array, maxItems: 1000, items: {$ref: '#/components/schemas/ShareFieldGrant'}}
+        expireAt: {type: string, format: date-time}
+        canReshare: {type: boolean}
+    RevokeShareRequest:
+      type: object
+      additionalProperties: false
+      required: [version, reason]
+      properties:
+        version: {type: integer, minimum: 0}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    ReshareRequest:
+      allOf:
+        - {$ref: '#/components/schemas/CreateShareRequest'}
+        - type: object
+          required: [parentVersion]
+          properties: {parentVersion: {type: integer, minimum: 0}}
+    ShareResponse:
+      type: object
+      additionalProperties: false
+      required: [shareId, status, version, projectionEpoch]
+      properties:
+        shareId: {$ref: '#/components/schemas/Id'}
+        status: {type: string, enum: [WAITING, ACTIVE, REVOKED, EXPIRED]}
+        version: {type: integer, minimum: 0}
+        projectionEpoch: {type: integer, minimum: 1}
+    CreateUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [fileName, fileSize, sha256, declaredContentType, resourceId, resourceInstanceKey]
+      properties:
+        fileName: {type: string, minLength: 1, maxLength: 255}
+        fileSize: {type: integer, minimum: 1, maximum: 53687091200}
+        sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        declaredContentType: {type: string, minLength: 3, maxLength: 255}
+        resourceId: {$ref: '#/components/schemas/Id'}
+        resourceInstanceKey: {type: string, minLength: 1, maxLength: 128}
+        fieldId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+    UploadSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [mode, status, version]
+      properties:
+        mode: {type: string, enum: [MULTIPART, INSTANT]}
+        uploadId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+        fileId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+        status: {type: string, enum: [INIT, UPLOADING, VERIFYING, MERGING, COMPLETED, FAILED, ABORTED, EXPIRED]}
+        partSize: {type: [integer, 'null'], minimum: 5242880}
+        partCount: {type: [integer, 'null'], minimum: 1, maximum: 10000}
+        uploadedParts: {type: array, uniqueItems: true, items: {type: integer, minimum: 1, maximum: 10000}}
+        expiresAt: {type: [string, 'null'], format: date-time}
+        version: {type: integer, minimum: 0}
+    SignPartRequest:
+      type: object
+      additionalProperties: false
+      required: [version, expectedSize]
+      properties:
+        version: {type: integer, minimum: 0}
+        expectedSize: {type: integer, minimum: 1}
+        partSha256: {type: [string, 'null'], pattern: '^[a-f0-9]{64}$'}
+    SignPartResponse:
+      type: object
+      additionalProperties: false
+      required: [uploadUrl, expiresAt, requiredHeaders]
+      properties:
+        uploadUrl: {type: string, format: uri}
+        expiresAt: {type: string, format: date-time}
+        requiredHeaders: {type: object, additionalProperties: {type: string}}
+    ReportPartRequest:
+      type: object
+      additionalProperties: false
+      required: [version, storageEtag, partSize]
+      properties:
+        version: {type: integer, minimum: 0}
+        storageEtag: {type: string, minLength: 1, maxLength: 255}
+        partSize: {type: integer, minimum: 1}
+        partSha256: {type: [string, 'null'], pattern: '^[a-f0-9]{64}$'}
+    CompleteUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [version, wholeSha256, parts]
+      properties:
+        version: {type: integer, minimum: 0}
+        wholeSha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        parts:
+          type: array
+          minItems: 1
+          maxItems: 10000
+          items:
+            type: object
+            additionalProperties: false
+            required: [partNumber, storageEtag]
+            properties:
+              partNumber: {type: integer, minimum: 1, maximum: 10000}
+              storageEtag: {type: string, minLength: 1, maxLength: 255}
+    CreateFileReferenceRequest:
+      type: object
+      additionalProperties: false
+      required: [resourceId, resourceInstanceKey, referenceType]
+      properties:
+        resourceId: {$ref: '#/components/schemas/Id'}
+        resourceInstanceKey: {type: string, minLength: 1, maxLength: 128}
+        referenceType: {type: string, enum: [ATTACHMENT, INLINE, EVIDENCE, AVATAR]}
+        fieldId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+        sortOrder: {type: integer, minimum: 0, maximum: 100000}
+    FileAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [resourceId, resourceInstanceKey]
+      properties:
+        resourceId: {$ref: '#/components/schemas/Id'}
+        resourceInstanceKey: {type: string, minLength: 1, maxLength: 128}
+        referenceId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+        requestedMode: {type: string, enum: [AUTO, PROXY, PRESIGNED]}
+    FileAccessResponse:
+      type: object
+      additionalProperties: false
+      required: [mode, expiresAt, auditId]
+      properties:
+        mode: {type: string, enum: [PROXY, PRESIGNED, SANDBOX_PREVIEW]}
+        accessUrl: {type: string, format: uri}
+        expiresAt: {type: string, format: date-time}
+        auditId: {$ref: '#/components/schemas/Id'}
+    DeleteFileRequest:
+      type: object
+      additionalProperties: false
+      required: [version, reason]
+      properties:
+        version: {type: integer, minimum: 0}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    EntityResponse:
+      type: object
+      additionalProperties: false
+      required: [id, version, status]
+      properties:
+        id: {$ref: '#/components/schemas/Id'}
+        version: {type: integer, minimum: 0}
+        status: {type: string}
+    FileResponse:
+      type: object
+      additionalProperties: false
+      required: [fileId, status, scanStatus, version]
+      properties:
+        fileId: {$ref: '#/components/schemas/Id'}
+        status: {type: string, enum: [VERIFYING, SCANNING, AVAILABLE, QUARANTINED, INFECTED, DELETED, ARCHIVED]}
+        scanStatus: {type: string, enum: [PENDING, SCANNING, CLEAN, INFECTED, FAILED, NOT_REQUIRED]}
+        version: {type: integer, minimum: 0}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, traceId]
+      properties:
+        success: {const: false}
+        code: {type: string, pattern: '^IAM_[A-Z0-9_]+$'}
+        message: {type: string, maxLength: 500}
+        traceId: {type: string}

@@ -1,0 +1,51 @@
+requirement_id,requirement,source,api_or_event,data_owner,verification_id,release_gate,contract_status
+IAM-TEN-001,Reject untrusted tenant identity and enforce SQL tenant predicate,SPEC37-4,OpenAPI trusted context,iam-identity-service,SEC-TEN-001;IT-TEN-001,P0 security,READY
+IAM-TEN-002,Cross-tenant resource lookup never reveals existence,SPEC37-4,All resource endpoints,Every owning service,SEC-IDOR-001,P0 security,READY
+IAM-AUTHN-001,Login does not enumerate identities,SPEC37-5,POST /api/v1/auth/login,iam-auth-service,SEC-AUTHN-001,P0 security,READY
+IAM-AUTHN-002,Access JWT pins algorithm and validates required identity version and time claims,SPEC43-2,AccessToken schema,iam-auth-service;iam-gateway,SEC-ACCESS-001;SEC-JWT-002,P0 security,READY
+IAM-AUTHN-009,Login credentials are returned only after session refresh-HMAC and projection-Outbox commit,SPEC46,POST /api/v1/auth/login;iam.auth.session-security-projection,iam-auth-service,IT-LOGIN-ISSUANCE-001,P0 security,IMPLEMENTED_SOURCE
+IAM-AUTHN-005,Gateway establishes identity only after exact authoritative session state and security-version validation,SPEC43-4,Gateway protected-route trust context,iam-gateway;iam-auth-service,SEC-SESSION-001,P0 security,READY
+IAM-AUTHN-006,Access JWKS can be fetched only through the bounded exact-host HTTPS trust adapter,SPEC44-5,Gateway access-token key resolution,iam-gateway,SEC-JWKS-TRANSPORT-001,P0 security,READY
+IAM-AUTHN-007,Session security projection is shared strict monotonic terminal-safe and absolutely expiring,SPEC44-2;SPEC44-3;SPEC44-4,Redis session security hash,iam-auth-service;iam-gateway,IT-SESSION-PROJECTION-001;SEC-SESSION-001,P0 security,READY
+IAM-AUTHN-008,Session projection delivery uses atomic append leased at-least-once relay strict payload validation and idempotent consumption,SPEC45-2;SPEC45-4;SPEC45-6,iam.auth.session-security-projection,iam-auth-service,IT-OUTBOX-001;IT-SESSION-PROJECTION-001,P0 security,READY
+IAM-AUTHN-003,Refresh rotates atomically and reuse revokes family,SPEC37-5,POST /api/v1/auth/refresh;RefreshTokenReuseDetected.v1,iam-auth-service,IT-REFRESH-001;SEC-REFRESH-002,P0 security,READY
+IAM-AUTHN-004,User disable invalidates sessions before success,SPEC37-5,POST /admin/v1/users/{userId}/disable;UserStatusChanged.v1,iam-identity-service,IT-DISABLE-001,P0 security,READY
+IAM-AUTHZ-001,Unknown or unavailable authorization state denies,SPEC37-6,POST /internal/v1/authorization/check,iam-authorization-service,SEC-FAILCLOSED-001,P0 security,READY
+IAM-AUTHZ-002,Decision cache key includes every policy-relevant dimension,SPEC37-6,AuthorizationCheckRequest,iam-authorization-service,PT-CACHEKEY-001,P1 correctness,READY
+IAM-AUTHZ-003,Grant and revoke monotonically increase permission version,SPEC37-7,PUT /admin/v1/roles/{roleId}/permissions;PermissionVersionChanged.v1,iam-authorization-service,IT-VERSION-001,P0 security,READY
+IAM-AUTHZ-004,Revoked permission cannot be allowed by a stale cache,SPEC37-7,PermissionVersionChanged.v1,iam-authorization-service,SEC-REVOKE-001,P0 security,READY
+IAM-IDEM-001,Duplicate command has one business effect,SPEC37-8,Idempotency-Key header,Every command owner,IT-IDEM-001;IT-IDEM-002,P1 correctness,READY
+IAM-EVT-001,Consumer validates deduplicates and applies monotonic versions,SPEC37-9,AsyncAPI event envelope,Every consumer,IT-EVENT-001;IT-EVENT-002,P1 correctness,READY
+IAM-DB-001,Tenant unique constraints include tenant identity,SPEC37-10,CODE PHASE 01 DDL,Owning service,DB-TENANT-001,P0 security,READY
+IAM-DB-002,Mutation version and outbox commit in one local transaction,SPEC37-10,PermissionVersionChanged.v1,iam-authorization-service,IT-OUTBOX-001,P1 correctness,READY
+IAM-OBS-001,Allow deny and revoke correlate by trace and decision IDs,SPEC37-11,All contracts,iam-audit-service,E2E-AUDIT-001,P1 audit,READY
+IAM-PRIV-001,Credentials tokens and protected fields never enter logs,SPEC37-11,SECURITY-PARAMETERS logging,All services,SEC-LOG-001,P0 security,READY
+IAM-API-001,Mutations enforce idempotency and optimistic version rules,SPEC37-8,OpenAPI mutation operations,Every command owner,CT-API-001,P1 contract,READY
+IAM-COMPAT-001,Breaking contract changes follow expand-contract and dual-read,SPEC37-14,OpenAPI;AsyncAPI;Flyway,Architecture owner,CT-COMPAT-001,Release,READY
+IAM-ORG-001,Organization and Team trees reject cycles and cross-tenant parents,SPEC38-3,POST /admin/v1/teams/{teamId}/move,iam-organization-service,SEC-TREE-001;SEC-TREE-002,P0 security,READY
+IAM-ORG-002,Active Team membership is unique and idempotent,SPEC38-3,PUT /admin/v1/teams/{teamId}/members/{userId},iam-organization-service,IT-TEAM-001,P1 correctness,READY
+IAM-ORG-003,TeamRole binding is local to owning Team and membership,SPEC38-3,PUT /admin/v1/teams/{teamId}/members/{userId}/roles/{teamRoleId},iam-organization-service,SEC-TEAMROLE-001;IT-TEAMROLE-002,P0 security,READY
+IAM-DATA-001,Data scope compiler accepts typed metadata and never raw SQL,SPEC38-4,POST /admin/v1/data-scopes,iam-authorization-service,SEC-SQL-001,P0 security,READY
+IAM-DATA-002,List count aggregate and export use identical effective scope,SPEC38-4,EffectivePolicyResponse dataPredicateRef,Business PEP,SEC-SQL-002,P0 security,READY
+IAM-DATA-003,Unsupported query shape fails closed,SPEC38-4,Data permission starter,iam-data-permission-starter,SEC-SQL-003,P0 security,READY
+IAM-DATA-004,Scope union and intersection cannot implicitly widen access,SPEC38-4,ReplaceDataScopesRequest,iam-authorization-service,PT-SCOPE-001,P1 correctness,READY
+IAM-DATA-005,Stale shared ACL checkpoint cannot allow,SPEC38-4,ResourceShare events and ACL checkpoint,Business ACL projection,SEC-SCOPE-002,P0 security,READY
+IAM-FIELD-001,Unknown hidden nested and explicit-null writes deny before mapping,SPEC38-5,fieldWritePlanRef,Business PEP,SEC-FIELD-001,P0 security,READY
+IAM-FIELD-002,Read shaping is consistent for list detail and export,SPEC38-5,fieldReadPlanRef,Business PEP,SEC-FIELD-002,P0 security,READY
+IAM-FIELD-003,Hidden or masked source fields cannot drive query operations by default,SPEC38-5,Field policy operation contract,Business PEP,SEC-FIELD-003,P0 security,READY
+IAM-FIELD-004,Field policy conflict resolution is restrictive and deterministic,SPEC38-5,CreateFieldPolicyRequest,iam-authorization-service,PT-FIELD-001,P1 correctness,READY
+IAM-SHARE-001,Share grants are subset of delegable creator rights,SPEC38-6,POST /api/v1/shares,iam-sharing-service,SEC-SHARE-001,P0 security,READY
+IAM-SHARE-002,Reshare is bounded by parent duration depth and current rights,SPEC38-6,POST /api/v1/shares/{shareId}/reshare,iam-sharing-service,SEC-SHARE-002,P0 security,READY
+IAM-SHARE-003,Revoke commits epoch fence before success,SPEC38-6,POST /api/v1/shares/{shareId}/revoke;ResourceShareRevoked.v1,iam-sharing-service,SEC-SHARE-003,P0 security,READY
+IAM-SHARE-004,Share create revoke expiry are idempotent and race safe,SPEC38-6,Share API and events,iam-sharing-service,IT-SHARE-004;IT-SHARE-005,P1 correctness,READY
+IAM-FILE-001,File upload reference and access remain tenant isolated,SPEC38-7,File API,iam-file-service,SEC-FILE-001,P0 security,READY
+IAM-FILE-002,Instant upload never reveals cross-tenant physical ownership,SPEC38-7,POST /api/v1/file-uploads,iam-file-service,SEC-FILE-002,P0 security,READY
+IAM-FILE-003,Multipart completion verifies authoritative storage state,SPEC38-7,POST /api/v1/file-uploads/{uploadId}/complete,iam-file-service,SEC-FILE-003;PT-FILE-001,P0 security,READY
+IAM-FILE-004,Concurrent upload completion returns one logical result,SPEC38-7,CompleteUploadRequest,iam-file-service,IT-FILE-004,P1 correctness,READY
+IAM-FILE-005,Pending failed infected or quarantined files are inaccessible,SPEC38-7,File access API;FileScanCompleted.v1,iam-file-service,SEC-FILE-005;SEC-FILE-006,P0 security,READY
+IAM-FILE-006,Proxy access supports immediate authorization revoke,SPEC38-7,POST /api/v1/files/{fileId}/download,iam-file-service,SEC-FILE-007,P0 security,READY
+IAM-FILE-007,Presigned access is narrowly scoped and short lived,SPEC38-7,SignPartResponse;FileAccessResponse,iam-file-service,SEC-FILE-008,P0 security,READY
+IAM-FILE-008,Filename cannot influence storage key or response headers,SPEC38-7,CreateUploadRequest,iam-file-service,SEC-FILE-009,P0 security,READY
+IAM-FILE-009,Legal hold retention and live references block unsafe purge,SPEC38-7,POST /api/v1/files/{fileId}/delete,iam-file-service,SEC-FILE-010,P0 security,READY
+IAM-FILE-010,Quota reservation is released exactly once on abort or expiry,SPEC38-7,DELETE /api/v1/file-uploads/{uploadId},iam-file-service,IT-FILE-011,P1 correctness,READY
+IAM-COMPAT-002,All phase contracts are validated and backward compatible,SPEC38-10,OpenAPI phase 02 and 03;AsyncAPI phase 02,Architecture owner,CT-PHASE2-001,Release,READY

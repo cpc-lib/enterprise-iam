@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: iam-file-service
+  main:
+    banner-mode: "off"
+
+server:
+  port: ${SERVER_PORT:8086}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+

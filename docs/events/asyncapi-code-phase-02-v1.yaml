@@ -1,0 +1,281 @@
+asyncapi: 3.1.0
+info:
+  title: Enterprise IAM CODE PHASE 02-05 Events
+  version: 1.3.0
+  description: Organization, policy, sharing and file security facts.
+defaultContentType: application/json
+servers:
+  production: {host: rabbitmq.example.invalid:5671, protocol: amqps}
+
+channels:
+  organizationEvents:
+    address: iam.organization.events.v1
+    messages:
+      TeamChangedV1: {$ref: '#/components/messages/TeamChangedV1'}
+      TeamMemberChangedV1: {$ref: '#/components/messages/TeamMemberChangedV1'}
+      TeamMemberRoleChangedV1: {$ref: '#/components/messages/TeamMemberRoleChangedV1'}
+  policyEvents:
+    address: iam.authorization.policy.events.v1
+    messages:
+      DataScopeChangedV1: {$ref: '#/components/messages/DataScopeChangedV1'}
+      FieldPolicyChangedV1: {$ref: '#/components/messages/FieldPolicyChangedV1'}
+  sharingEvents:
+    address: iam.sharing.events.v1
+    messages:
+      ResourceShareCreatedV1: {$ref: '#/components/messages/ResourceShareCreatedV1'}
+      ResourceShareRevokedV1: {$ref: '#/components/messages/ResourceShareRevokedV1'}
+      ResourceShareExpiredV1: {$ref: '#/components/messages/ResourceShareExpiredV1'}
+  fileEvents:
+    address: iam.file.events.v1
+    messages:
+      FileUploadedV1: {$ref: '#/components/messages/FileUploadedV1'}
+      FileInstantCreatedV1: {$ref: '#/components/messages/FileInstantCreatedV1'}
+      FileScanCompletedV1: {$ref: '#/components/messages/FileScanCompletedV1'}
+      FileAvailableV1: {$ref: '#/components/messages/FileAvailableV1'}
+      FileQuarantinedV1: {$ref: '#/components/messages/FileQuarantinedV1'}
+      FileDeletedV1: {$ref: '#/components/messages/FileDeletedV1'}
+      FilePurgedV1: {$ref: '#/components/messages/FilePurgedV1'}
+      FileReferenceCreatedV1: {$ref: '#/components/messages/FileReferenceCreatedV1'}
+      FileReferenceRemovedV1: {$ref: '#/components/messages/FileReferenceRemovedV1'}
+      UploadSessionExpiredV1: {$ref: '#/components/messages/UploadSessionExpiredV1'}
+
+operations:
+  sendOrganizationEvents: {action: send, channel: {$ref: '#/channels/organizationEvents'}}
+  sendPolicyEvents: {action: send, channel: {$ref: '#/channels/policyEvents'}}
+  sendSharingEvents: {action: send, channel: {$ref: '#/channels/sharingEvents'}}
+  sendFileEvents: {action: send, channel: {$ref: '#/channels/fileEvents'}}
+
+components:
+  correlationIds:
+    TraceCorrelation: {location: '$message.payload#/correlationId'}
+  messages:
+    TeamChangedV1:
+      name: TeamChanged.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/TeamChangedEvent'}
+    TeamMemberChangedV1:
+      name: TeamMemberChanged.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/TeamMemberChangedEvent'}
+    TeamMemberRoleChangedV1:
+      name: TeamMemberRoleChanged.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/TeamMemberRoleChangedEvent'}
+    DataScopeChangedV1:
+      name: DataScopeChanged.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/PolicyChangedEvent'}
+    FieldPolicyChangedV1:
+      name: FieldPolicyChanged.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/PolicyChangedEvent'}
+    ResourceShareCreatedV1:
+      name: ResourceShareCreated.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/ShareChangedEvent'}
+    ResourceShareRevokedV1:
+      name: ResourceShareRevoked.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/ShareChangedEvent'}
+    ResourceShareExpiredV1:
+      name: ResourceShareExpired.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/ShareChangedEvent'}
+    FileUploadedV1:
+      name: FileUploaded.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileChangedEvent'}
+    FileInstantCreatedV1:
+      name: FileInstantCreated.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileChangedEvent'}
+    FileScanCompletedV1:
+      name: FileScanCompleted.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileScanEvent'}
+    FileAvailableV1:
+      name: FileAvailable.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileChangedEvent'}
+    FileQuarantinedV1:
+      name: FileQuarantined.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileChangedEvent'}
+    FileDeletedV1:
+      name: FileDeleted.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileChangedEvent'}
+    FilePurgedV1:
+      name: FilePurged.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileChangedEvent'}
+    FileReferenceCreatedV1:
+      name: FileReferenceCreated.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileReferenceChangedEvent'}
+    FileReferenceRemovedV1:
+      name: FileReferenceRemoved.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/FileReferenceChangedEvent'}
+    UploadSessionExpiredV1:
+      name: UploadSessionExpired.v1
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload: {$ref: '#/components/schemas/UploadSessionChangedEvent'}
+  schemas:
+    Id:
+      type: string
+      pattern: '^[1-9][0-9]{0,18}$'
+      maxLength: 19
+      description: Positive signed 64-bit decimal ID; the numeric value MUST be at most 9223372036854775807.
+      x-iam-numeric-maximum: 9223372036854775807
+    Envelope:
+      type: object
+      required: [eventId, eventType, schemaVersion, occurredAt, producer, tenantId, aggregateType, aggregateId, aggregateVersion, correlationId, causationId, payload]
+      properties:
+        eventId: {$ref: '#/components/schemas/Id'}
+        eventType: {type: string, pattern: '^[A-Za-z][A-Za-z0-9]+\.v[1-9][0-9]*$'}
+        schemaVersion: {const: 1}
+        occurredAt: {type: string, format: date-time}
+        producer: {type: string, enum: [iam-organization-service, iam-authorization-service, iam-sharing-service, iam-file-service]}
+        tenantId: {$ref: '#/components/schemas/Id'}
+        aggregateType: {type: string, maxLength: 64}
+        aggregateId: {$ref: '#/components/schemas/Id'}
+        aggregateVersion: {type: integer, minimum: 1}
+        correlationId: {type: string, minLength: 8, maxLength: 128}
+        causationId: {type: string, minLength: 8, maxLength: 128}
+        payload: {type: object}
+    TeamChangedEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [teamId, organizationId, parentTeamId, materializedPath, status]
+              properties:
+                teamId: {$ref: '#/components/schemas/Id'}
+                organizationId: {$ref: '#/components/schemas/Id'}
+                parentTeamId: {oneOf: [{$ref: '#/components/schemas/Id'}, {type: 'null'}]}
+                materializedPath: {type: string, maxLength: 2048}
+                status: {type: string, enum: [ACTIVE, DISABLED]}
+    TeamMemberChangedEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [teamId, userId, action, permissionVersion]
+              properties:
+                teamId: {$ref: '#/components/schemas/Id'}
+                userId: {$ref: '#/components/schemas/Id'}
+                action: {type: string, enum: [JOINED, LEFT]}
+                permissionVersion: {type: integer, minimum: 1}
+    TeamMemberRoleChangedEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [teamId, userId, teamRoleId, action, permissionVersion]
+              properties:
+                teamId: {$ref: '#/components/schemas/Id'}
+                userId: {$ref: '#/components/schemas/Id'}
+                teamRoleId: {$ref: '#/components/schemas/Id'}
+                action: {type: string, enum: [BOUND, UNBOUND]}
+                permissionVersion: {type: integer, minimum: 1}
+    PolicyChangedEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [policyId, resourceId, changeType, permissionVersion]
+              properties:
+                policyId: {$ref: '#/components/schemas/Id'}
+                resourceId: {$ref: '#/components/schemas/Id'}
+                changeType: {type: string, enum: [CREATED, UPDATED, ENABLED, DISABLED, BINDINGS_REPLACED]}
+                permissionVersion: {type: integer, minimum: 1}
+    ShareChangedEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [shareId, resourceId, resourceInstanceKey, targetType, targetId, status, shareVersion, projectionEpoch]
+              properties:
+                shareId: {$ref: '#/components/schemas/Id'}
+                resourceId: {$ref: '#/components/schemas/Id'}
+                resourceInstanceKey: {type: string, maxLength: 128}
+                targetType: {type: string, enum: [USER, TEAM]}
+                targetId: {$ref: '#/components/schemas/Id'}
+                status: {type: string, enum: [WAITING, ACTIVE, REVOKED, EXPIRED]}
+                shareVersion: {type: integer, minimum: 1}
+                projectionEpoch: {type: integer, minimum: 1}
+                operationIds: {type: array, uniqueItems: true, items: {$ref: '#/components/schemas/Id'}}
+    FileChangedEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [fileId, status, scanStatus, size, sha256]
+              properties:
+                fileId: {$ref: '#/components/schemas/Id'}
+                status: {type: string, enum: [VERIFYING, SCANNING, AVAILABLE, QUARANTINED, INFECTED, DELETED, ARCHIVED, PURGED]}
+                scanStatus: {type: string, enum: [PENDING, SCANNING, CLEAN, INFECTED, FAILED, NOT_REQUIRED]}
+                size: {type: integer, minimum: 0}
+                sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+    FileScanEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [fileId, result, scanner, signatureVersion, scannedAt]
+              properties:
+                fileId: {$ref: '#/components/schemas/Id'}
+                result: {type: string, enum: [CLEAN, INFECTED, FAILED]}
+                scanner: {type: string, maxLength: 64}
+                signatureVersion: {type: string, maxLength: 64}
+                scannedAt: {type: string, format: date-time}
+                threatCode: {type: [string, 'null'], maxLength: 128}
+    FileReferenceChangedEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [referenceId, fileId, resourceType, resourceInstanceId, status]
+              properties:
+                referenceId: {$ref: '#/components/schemas/Id'}
+                fileId: {$ref: '#/components/schemas/Id'}
+                resourceType: {type: string, maxLength: 128}
+                resourceInstanceId: {type: string, maxLength: 128}
+                status: {type: string, enum: [CREATED, REMOVED]}
+    UploadSessionChangedEvent:
+      allOf:
+        - {$ref: '#/components/schemas/Envelope'}
+        - type: object
+          properties:
+            payload:
+              type: object
+              additionalProperties: false
+              required: [sessionId, status]
+              properties:
+                sessionId: {$ref: '#/components/schemas/Id'}
+                status: {type: string, enum: [EXPIRED]}

@@ -1,0 +1,241 @@
+asyncapi: 3.1.0
+info:
+  title: Enterprise IAM CODE PHASE 01 Events
+  version: 1.1.0
+  description: Normative RabbitMQ event contract for the first vertical slice.
+defaultContentType: application/json
+
+servers:
+  production:
+    host: rabbitmq.example.invalid:5671
+    protocol: amqps
+    description: Placeholder; real host comes from environment configuration.
+
+channels:
+  iamIdentityEvents:
+    address: iam.identity.events.v1
+    messages:
+      TenantCreatedV1: {$ref: '#/components/messages/TenantCreatedV1'}
+      UserStatusChangedV1: {$ref: '#/components/messages/UserStatusChangedV1'}
+      UserRoleChangedV1: {$ref: '#/components/messages/UserRoleChangedV1'}
+  iamAuthorizationEvents:
+    address: iam.authorization.events.v1
+    messages:
+      RolePermissionChangedV1: {$ref: '#/components/messages/RolePermissionChangedV1'}
+      PermissionVersionChangedV1: {$ref: '#/components/messages/PermissionVersionChangedV1'}
+  iamAuthSecurityEvents:
+    address: iam.auth.security.events.v1
+    messages:
+      RefreshTokenReuseDetectedV1: {$ref: '#/components/messages/RefreshTokenReuseDetectedV1'}
+
+operations:
+  publishIdentityEvents:
+    action: send
+    channel: {$ref: '#/channels/iamIdentityEvents'}
+    messages:
+      - {$ref: '#/channels/iamIdentityEvents/messages/TenantCreatedV1'}
+      - {$ref: '#/channels/iamIdentityEvents/messages/UserStatusChangedV1'}
+      - {$ref: '#/channels/iamIdentityEvents/messages/UserRoleChangedV1'}
+  publishAuthorizationEvents:
+    action: send
+    channel: {$ref: '#/channels/iamAuthorizationEvents'}
+    messages:
+      - {$ref: '#/channels/iamAuthorizationEvents/messages/RolePermissionChangedV1'}
+      - {$ref: '#/channels/iamAuthorizationEvents/messages/PermissionVersionChangedV1'}
+  publishAuthSecurityEvents:
+    action: send
+    channel: {$ref: '#/channels/iamAuthSecurityEvents'}
+    messages:
+      - {$ref: '#/channels/iamAuthSecurityEvents/messages/RefreshTokenReuseDetectedV1'}
+
+components:
+  messages:
+    TenantCreatedV1:
+      name: TenantCreated.v1
+      title: Tenant created
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload:
+        allOf:
+          - {$ref: '#/components/schemas/EventEnvelope'}
+          - type: object
+            properties:
+              eventType: {const: TenantCreated.v1}
+              aggregateType: {const: Tenant}
+              payload: {$ref: '#/components/schemas/TenantCreatedPayload'}
+    UserStatusChangedV1:
+      name: UserStatusChanged.v1
+      title: User status changed
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload:
+        allOf:
+          - {$ref: '#/components/schemas/EventEnvelope'}
+          - type: object
+            properties:
+              eventType: {const: UserStatusChanged.v1}
+              aggregateType: {const: User}
+              payload: {$ref: '#/components/schemas/UserStatusChangedPayload'}
+    UserRoleChangedV1:
+      name: UserRoleChanged.v1
+      title: User role binding changed
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload:
+        allOf:
+          - {$ref: '#/components/schemas/EventEnvelope'}
+          - type: object
+            properties:
+              eventType: {const: UserRoleChanged.v1}
+              aggregateType: {const: User}
+              payload: {$ref: '#/components/schemas/UserRoleChangedPayload'}
+    RolePermissionChangedV1:
+      name: RolePermissionChanged.v1
+      title: Role permission binding set changed
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload:
+        allOf:
+          - {$ref: '#/components/schemas/EventEnvelope'}
+          - type: object
+            properties:
+              eventType: {const: RolePermissionChanged.v1}
+              aggregateType: {const: Role}
+              payload: {$ref: '#/components/schemas/RolePermissionChangedPayload'}
+    PermissionVersionChangedV1:
+      name: PermissionVersionChanged.v1
+      title: Tenant or subject permission version changed
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload:
+        allOf:
+          - {$ref: '#/components/schemas/EventEnvelope'}
+          - type: object
+            properties:
+              eventType: {const: PermissionVersionChanged.v1}
+              aggregateType: {const: PermissionVersion}
+              payload: {$ref: '#/components/schemas/PermissionVersionChangedPayload'}
+    RefreshTokenReuseDetectedV1:
+      name: RefreshTokenReuseDetected.v1
+      title: Refresh token reuse detected
+      correlationId: {$ref: '#/components/correlationIds/TraceCorrelation'}
+      payload:
+        allOf:
+          - {$ref: '#/components/schemas/EventEnvelope'}
+          - type: object
+            properties:
+              eventType: {const: RefreshTokenReuseDetected.v1}
+              aggregateType: {const: Session}
+              payload: {$ref: '#/components/schemas/RefreshTokenReusePayload'}
+
+  correlationIds:
+    TraceCorrelation:
+      description: Correlates event handling with the originating request.
+      location: $message.payload#/correlationId
+
+  schemas:
+    Id:
+      type: string
+      pattern: '^[1-9][0-9]{0,18}$'
+      maxLength: 19
+      description: Positive signed 64-bit decimal ID; the numeric value MUST be at most 9223372036854775807.
+      x-iam-numeric-maximum: 9223372036854775807
+    EventEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - eventType
+        - schemaVersion
+        - occurredAt
+        - producer
+        - tenantId
+        - aggregateType
+        - aggregateId
+        - aggregateVersion
+        - correlationId
+        - causationId
+        - payload
+      properties:
+        eventId: {$ref: '#/components/schemas/Id'}
+        eventType: {type: string, pattern: '^[A-Za-z][A-Za-z0-9]+\.v[1-9][0-9]*$'}
+        schemaVersion: {const: 1}
+        occurredAt: {type: string, format: date-time}
+        producer:
+          type: string
+          enum: [iam-identity-service, iam-auth-service, iam-authorization-service]
+        tenantId: {$ref: '#/components/schemas/Id'}
+        aggregateType: {type: string, minLength: 1, maxLength: 64}
+        aggregateId: {$ref: '#/components/schemas/Id'}
+        aggregateVersion: {type: integer, minimum: 1}
+        correlationId: {type: string, minLength: 8, maxLength: 128}
+        causationId: {type: string, minLength: 8, maxLength: 128}
+        actor:
+          type: object
+          additionalProperties: false
+          required: [type, id]
+          properties:
+            type: {type: string, enum: [USER, SERVICE, SYSTEM]}
+            id: {type: string, maxLength: 128}
+        payload: {type: object}
+    TenantCreatedPayload:
+      type: object
+      additionalProperties: false
+      required: [tenantId, tenantCode, status]
+      properties:
+        tenantId: {$ref: '#/components/schemas/Id'}
+        tenantCode: {type: string}
+        status: {const: ACTIVE}
+    UserStatusChangedPayload:
+      type: object
+      additionalProperties: false
+      required: [userId, previousStatus, status, securityVersion]
+      properties:
+        userId: {$ref: '#/components/schemas/Id'}
+        previousStatus: {type: string, enum: [INVITED, ACTIVE, DISABLED]}
+        status: {type: string, enum: [INVITED, ACTIVE, DISABLED]}
+        securityVersion: {type: integer, minimum: 1}
+    UserRoleChangedPayload:
+      type: object
+      additionalProperties: false
+      required: [userId, roleId, action, permissionVersion]
+      properties:
+        userId: {$ref: '#/components/schemas/Id'}
+        roleId: {$ref: '#/components/schemas/Id'}
+        action: {type: string, enum: [BOUND, UNBOUND]}
+        permissionVersion: {type: integer, minimum: 1}
+    RolePermissionChangedPayload:
+      type: object
+      additionalProperties: false
+      required: [roleId, addedPermissionIds, removedPermissionIds, roleVersion, permissionVersion]
+      properties:
+        roleId: {$ref: '#/components/schemas/Id'}
+        addedPermissionIds:
+          type: array
+          uniqueItems: true
+          items: {$ref: '#/components/schemas/Id'}
+        removedPermissionIds:
+          type: array
+          uniqueItems: true
+          items: {$ref: '#/components/schemas/Id'}
+        roleVersion: {type: integer, minimum: 1}
+        permissionVersion: {type: integer, minimum: 1}
+    PermissionVersionChangedPayload:
+      type: object
+      additionalProperties: false
+      required: [scope, version, reason]
+      properties:
+        scope: {type: string, enum: [TENANT, SUBJECT]}
+        subjectId:
+          oneOf:
+            - {$ref: '#/components/schemas/Id'}
+            - {type: 'null'}
+        version: {type: integer, minimum: 1}
+        reason:
+          type: string
+          enum: [USER_ROLE_CHANGED, ROLE_PERMISSION_CHANGED, USER_STATUS_CHANGED]
+    RefreshTokenReusePayload:
+      type: object
+      additionalProperties: false
+      required: [sessionId, userId, tokenFamilyId, detectedAt, action]
+      properties:
+        sessionId: {$ref: '#/components/schemas/Id'}
+        userId: {$ref: '#/components/schemas/Id'}
+        tokenFamilyId: {$ref: '#/components/schemas/Id'}
+        detectedAt: {type: string, format: date-time}
+        action: {const: SESSION_AND_FAMILY_REVOKED}

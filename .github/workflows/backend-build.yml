@@ -1,0 +1,85 @@
+name: backend-build
+
+"on":
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'tools/validate_build_foundation.py'
+      - 'tools/validate_phase01_core.py'
+      - 'tools/validate_auth_crypto.py'
+      - 'tools/validate_delegation_wiring.py'
+      - 'tools/validate_access_authentication.py'
+      - 'tools/validate_trust_adapters.py'
+      - 'tools/validate_session_projection_outbox.py'
+      - 'tools/validate_session_issuance.py'
+      - 'tools/requirements-contracts.txt'
+      - '.github/workflows/backend-build.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'tools/validate_build_foundation.py'
+      - 'tools/validate_phase01_core.py'
+      - 'tools/validate_auth_crypto.py'
+      - 'tools/validate_delegation_wiring.py'
+      - 'tools/validate_access_authentication.py'
+      - 'tools/validate_trust_adapters.py'
+      - 'tools/validate_session_projection_outbox.py'
+      - 'tools/validate_session_issuance.py'
+      - 'tools/requirements-contracts.txt'
+      - '.github/workflows/backend-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-reactor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tools/requirements-contracts.txt
+      - name: Install validator dependency
+        run: python -m pip install --requirement tools/requirements-contracts.txt
+      - name: Validate reactor and launchers
+        run: python tools/validate_build_foundation.py --require-jdk21
+      - name: Validate CODE PHASE 01 security core
+        run: python tools/validate_phase01_core.py
+      - name: Validate authentication and delegation crypto
+        run: python tools/validate_auth_crypto.py
+      - name: Validate JWKS and delegation service wiring
+        run: python tools/validate_delegation_wiring.py
+      - name: Validate Gateway access authentication and session fence
+        run: python tools/validate_access_authentication.py
+      - name: Validate HTTPS JWKS and Redis session trust adapters
+        run: python tools/validate_trust_adapters.py
+      - name: Validate session projection transactional outbox
+        run: python tools/validate_session_projection_outbox.py
+      - name: Validate transactional login session issuance
+        run: python tools/validate_session_issuance.py
+      - name: Compile and test complete backend reactor
+        working-directory: backend
+        run: mvn -B -ntp verify
+      - name: Publish test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-surefire-reports
+          path: |
+            backend/**/target/surefire-reports/*
+            backend/**/target/failsafe-reports/*
+          if-no-files-found: warn
+          retention-days: 14

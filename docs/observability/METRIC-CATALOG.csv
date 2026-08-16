@@ -1,0 +1,27 @@
+metric,type,domain,description,allowed_labels
+iam_auth_login_total,counter,auth,Login attempts,result
+iam_auth_refresh_reuse_total,counter,auth/security,Refresh reuse detected,severity
+iam_authz_decision_total,counter,authorization,Authorization decisions,"decision,decisionCode,cacheLevel"
+iam_authz_latency_seconds,histogram,authorization,Authorization latency,"cacheLevel,result"
+iam_authz_fail_closed_total,counter,authorization,Requests rejected because safe decision unavailable,reason
+iam_data_permission_rewrite_failure_total,counter,data-permission,SQL rewrite failures,reason
+iam_field_write_denied_total,counter,field-permission,Forbidden field write,resourceType
+iam_share_escalation_denied_total,counter,sharing/security,Share escalation blocked,type
+iam_projection_gap_total,counter,projection,Projection version gaps,projection
+iam_projection_checkpoint_lag,gauge,projection,Checkpoint lag,projection
+iam_outbox_pending_total,gauge,outbox,Pending outbox rows,service
+iam_outbox_oldest_pending_seconds,gauge,outbox,Age of oldest pending event,service
+iam_outbox_claimed_total,counter,outbox,Rows claimed for delivery,service
+iam_outbox_delivery_total,counter,outbox,Delivery state transitions,"service,result"
+iam_outbox_delivery_duration_seconds,histogram,outbox,Handler and terminal transition duration,"service,result"
+iam_job_failure_total,counter,job,Job failures,jobType
+iam_security_cross_tenant_attempt_total,counter,security,Cross tenant attempt,surface
+iam_file_download_total,counter,file,File downloads,result
+iam_file_download_denied_total,counter,file/security,Denied file downloads,reason
+iam_file_preview_total,counter,file,File previews,result
+iam_file_scan_total,counter,file,File scans,scanner
+iam_file_scan_failure_total,counter,file,File scan failures,reason
+iam_file_quarantine_total,counter,file/security,Quarantined files,reason
+iam_file_purge_total,counter,file,Purged files,reason
+iam_file_storage_reconcile_mismatch_total,counter,file,Storage reconcile mismatches,type
+iam_file_presigned_issued_total,counter,file,Presigned URLs issued,purpose

@@ -1,0 +1,28 @@
+﻿id,threat,stride,severity,control,detection,release_blocking
+T01,Tenant header spoofing,Spoofing/EoP,CRITICAL,Gateway strip + trusted tenant context,cross-tenant security event,YES
+T02,User header spoofing,Spoofing/EoP,CRITICAL,Gateway strip + signed delegation,internal auth failure,YES
+T03,JWT forgery,Spoofing,CRITICAL,asymmetric signature + alg/iss/aud/kid checks,auth security event,YES
+T04,Refresh token replay,Replay/EoP,CRITICAL,rotation + reuse detection + family revoke,critical security event,YES
+T05,Cross-tenant IDOR,EoP/Disclosure,CRITICAL,tenant guard + tenant SQL predicate,cross-tenant event,YES
+T06,Same-tenant IDOR,EoP,HIGH,instance auth + data scope,authz deny audit,YES
+T07,Data scope bypass,Disclosure/EoP,CRITICAL,AST SQL enforcement + fail closed,security regression,YES
+T08,Field mass assignment,Tampering/EoP,CRITICAL,submitted field guard + SQL set guard,field denied event,YES
+T09,Frontend-only masking,Disclosure,CRITICAL,backend masking/hiding,sensitive field audit,YES
+T10,Share operation escalation,EoP,CRITICAL,server-side subset validation,share escalation event,YES
+T11,Share field escalation,EoP/Disclosure,CRITICAL,field subset validation,share escalation event,YES
+T12,Stale share after revoke,EoP,CRITICAL,permission version + projection epoch/checkpoint,projection lag event,YES
+T13,Unknown API exposed,EoP,CRITICAL,unmapped default deny,mapping health alert,YES
+T14,PUBLIC misconfiguration,EoP,HIGH,high-risk operation + audit/security event,security center,YES
+T15,Internal API exposure,Spoofing/EoP,CRITICAL,network isolation + service identity,internal auth failure,YES
+T16,Authorization fail-open,EoP,CRITICAL,safe cache or deny/503,fail-closed metric,YES
+T17,Redis session fail-open,EoP,CRITICAL,Redis failure -> fail closed,availability/security alert,YES
+T18,HTTP duplicate mutation,Tampering,HIGH,idempotency key + DB unique,idempotency conflict metric,NO
+T19,MQ duplicate effect,Tampering,HIGH,consume dedup + aggregate version,consumer metric,NO
+T20,MQ stale overwrite,Tampering,HIGH,aggregate version,version-gap metric,YES
+T21,Job double execution,Tampering,HIGH,business CAS + job idempotency,job retry metric,NO
+T22,Audit tampering,Repudiation,HIGH,append-only + DB privilege separation,integrity monitoring,YES
+T23,Explain leakage,Disclosure,HIGH,BASIC/ADMIN/SECURITY explain levels,audit,NO
+T24,Secret in Git,Disclosure,CRITICAL,secret scan + external secret storage,CI failure,YES
+T25,Default prod secret,Spoofing,CRITICAL,prod startup safety check,startup failure,YES
+T26,Session projection outbox poison or stale-owner overwrite,Tampering/EoP,CRITICAL,strict payload metadata + claim-owner fence + bounded dead-letter,dead/lease-loss/convergence alerts,YES
+T27,Partial login issuance or persisted refresh plaintext,Spoofing/Tampering/Disclosure,CRITICAL,commit-before-return transaction + HMAC-only refresh persistence + destroyable buffer,issuance rollback and credential-log tests,YES

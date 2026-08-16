@@ -1,0 +1,28 @@
+﻿service,contract,type,purpose,critical_rule
+iam-identity-service,TenantRepository,Write/Aggregate,Tenant lifecycle,"tenant_code unique, version"
+iam-identity-service,UserRepository,Write/Aggregate,User lifecycle,"tenant explicit, optimistic lock"
+iam-identity-service,UserRoleRepository,Relation,Role binding,"active unique, diff/event"
+iam-identity-service,AuthenticationIdentityQueryPort,Read,Login identity lookup,single indexed lookup
+iam-organization-service,TeamRepository,Write/Aggregate,Team lifecycle,"materialized path, version"
+iam-organization-service,TeamMemberRepository,Relation,Membership,"active unique, version"
+iam-organization-service,TeamTreeQueryPort,Read,Organization/team tree,no N+1
+iam-authorization-service,ResourceRepository,Write/Metadata,Resource lifecycle,"tenant+code, version"
+iam-authorization-service,RolePermissionRepository,Grant binding,Role grant,grant binding is policy anchor
+iam-authorization-service,TeamRolePermissionRepository,Grant binding,Team role grant,grant binding is policy anchor
+iam-authorization-service,PermissionVersionRepository,Version,Immediate revoke,atomic increment
+iam-authorization-service,AuthorizationGrantQueryPort,Runtime read,Authorization grants,batch/read-model based
+iam-authorization-service,AuthorizationMetadataQueryPort,Runtime read,Resource/operation/data/field metadata,cacheable
+iam-sharing-service,ResourceShareRepository,Aggregate,Create/revoke/reshare,"aggregate load, CAS"
+iam-sharing-service,ShareQueryPort,Read,Share lists/details,"read DTO, cursor where needed"
+iam-sharing-service,ShareProjectionEpochRepository,Version,ACL stale protection,atomic epoch increment
+iam-auth-service,SessionRepository,Aggregate/state,Session lifecycle,DB source of truth
+iam-auth-service,SessionCacheRepository,Cache,Per-request session validation,Redis
+iam-auth-service,RefreshTokenRepository,State machine,Refresh rotation,row lock/CAS
+iam-auth-service,UserSecurityStateRepository,Version/state,Token/password version,atomic increment
+iam-auth-service,SessionProjectionOutboxAppender,Infrastructure,Durable Redis projection delivery,must join owning session write transaction
+iam-auth-service,LoginSessionIssuer,Transaction boundary,Atomic session access refresh and projection issuance,locks security version and commits before credential return
+iam-audit-service,AuthorizationAuditQueryPort,Read,Audit search,cursor pagination
+all emitting services,OutboxRepository,Infrastructure,Domain event delivery,SKIP LOCKED claim
+idempotent services,IdempotencyRepository,Infrastructure,HTTP idempotency,unique+lease
+consumer services,MessageConsumeRepository,Infrastructure,MQ dedup,event+consumer unique
+iam-job-service,JobBusinessRecordRepository,Infrastructure,Job visibility/retry,business state still authoritative

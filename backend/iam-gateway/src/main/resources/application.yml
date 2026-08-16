@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: iam-gateway
+  main:
+    banner-mode: "off"
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+iam:
+  gateway:
+    access-authentication:
+      enabled: ${IAM_GATEWAY_ACCESS_AUTHENTICATION_ENABLED:false}
+      issuer: iam-auth-service
+      audience: iam-gateway
+      maximum-ttl: 5m
+      clock-skew: 30s
+      jwks-cache-ttl: 5m
+      unknown-key-ttl: 30s
+      unknown-key-refresh-minimum-interval: 5s
+      jwks-connect-timeout: 2s
+      jwks-request-timeout: 3s
+    delegation:
+      enabled: ${IAM_GATEWAY_DELEGATION_ENABLED:false}

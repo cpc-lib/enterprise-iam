@@ -1,0 +1,215 @@
+schemaVersion: 1
+status: normative-for-development-and-test
+reviewCycleDays: 180
+
+standards:
+  applicationVerification: "OWASP ASVS Level 2"
+  jwt: "RFC 8725"
+  apiThreatBaseline: "OWASP API Security Top 10 2023"
+
+password:
+  algorithm: argon2id
+  minimumLength: 15
+  maximumLength: 128
+  allowUnicode: true
+  normalization: NFC
+  memoryKiB: 19456
+  iterations: 2
+  parallelism: 1
+  saltBytes: 16
+  outputBytes: 32
+  storageFormat: PHC
+  breachedPasswordCheck: required-when-available
+  rejectSilentTruncation: true
+
+jwtAccessToken:
+  algorithmAllowlist: [ES256]
+  requiredTyp: at+jwt
+  ttlSeconds: 300
+  maximumClockSkewSeconds: 30
+  maximumCompactTokenBytes: 8192
+  requiredClaims: [iss, aud, sub, tid, sid, tver, sver, jti, iat, nbf, exp]
+  validateIssuer: true
+  validateAudience: true
+  audienceCardinality: 1
+  acceptNoneAlgorithm: false
+  acceptEmbeddedJwk: false
+  keyIdRequired: true
+  jwksMaximumBytes: 65536
+  jwksMaximumKeys: 32
+  jwksCacheSeconds: 300
+  unknownKeyNegativeCacheSeconds: 30
+  unknownKeyRefreshMinimumIntervalSeconds: 5
+  unknownKeyNegativeCacheMaximumEntries: 1024
+  unknownKeyIdBehavior: refresh-once-then-deny
+  sessionStateRequired: true
+  sessionRequiredFields: [tenantId, subjectId, sessionId, tokenVersion, sessionVersion, status, idleExpiresAt, absoluteExpiresAt]
+  sessionDependencyUnavailableBehavior: 503_FAIL_CLOSED
+
+jwtDelegationToken:
+  algorithmAllowlist: [ES256]
+  requiredTyp: iam-delegation+jwt
+  ttlSeconds: 30
+  maximumClockSkewSeconds: 5
+  maximumCompactTokenBytes: 4096
+  jwksMaximumBytes: 65536
+  jwksMaximumKeys: 32
+  jwksCacheSeconds: 300
+  unknownKeyNegativeCacheSeconds: 30
+  unknownKeyRefreshMinimumIntervalSeconds: 5
+  unknownKeyNegativeCacheMaximumEntries: 1024
+  requiredClaims: [iss, aud, tid, sub, sid, jti, rid, iat, nbf, exp]
+  validateIssuer: true
+  validateAudience: true
+  audienceCardinality: 1
+  keyIdRequired: true
+  externalTokenAcceptedByDownstream: false
+  missingOrInvalidBehavior: DENY
+
+refreshToken:
+  format: opaque-random
+  formatPrefix: rt1
+  entropyBits: 256
+  randomBytes: 32
+  keyIdRequired: true
+  hashAlgorithm: HmacSHA256
+  minimumHashKeyBits: 256
+  ttlSeconds: 1209600
+  absoluteSessionTtlSeconds: 2592000
+  rotation: every-use
+  reuseAction: revoke-token-family-and-session
+  storage: keyed-hash-only
+  cookie:
+    name: IAM_REFRESH
+    httpOnly: true
+    secure: true
+    sameSite: Strict
+    path: /api/v1/auth
+    exactAttributeOrder: [Path, Secure, HttpOnly, SameSite]
+
+session:
+  idleTtlSeconds: 86400
+  absoluteTtlSeconds: 2592000
+  maximumConcurrentSessionsPerUser: 10
+  idNodeRange: 0..1023-explicit-per-deployment
+  idNumericMaximum: 9223372036854775807
+  changeSessionIdAfterAuthentication: true
+  invalidateOnPasswordChange: all-sessions-except-current-after-reauth
+  invalidateOnUserDisable: all-sessions-before-command-success
+
+authenticationProtection:
+  perIdentityFailures: 5
+  perIdentityWindowSeconds: 900
+  lockSeconds: 900
+  perIpFailures: 30
+  perIpWindowSeconds: 300
+  exponentialBackoff: true
+  responseEnumerationResistance: true
+  administrativeReauthenticationMaxAgeSeconds: 300
+
+loginMutation:
+  genericIdempotencyReplay: explicitly-excluded
+  exclusionReason: successful response contains non-recoverable refresh plaintext
+  requestIdPurpose: correlation-only
+  ambiguousResultRetry: new-authentication-attempt
+  durableSuccessAuditRequiredForProduction: true
+  orphanSessionReconciliationRequiredForProduction: true
+
+authorization:
+  defaultDecision: DENY
+  unknownApi: DENY
+  dependencyUnavailable: DENY
+  positiveCacheTtlSeconds: 30
+  negativeCacheTtlSeconds: 10
+  permissionVersionRequired: true
+  staleVersion: DENY_OR_SYNCHRONOUS_REBUILD
+  immediateRevocationPaths:
+    - user-disable
+    - session-force-logout
+    - role-permission-revoke
+    - share-revoke
+
+policyEngine:
+  organizationMaximumDepth: 32
+  conditionAstMaximumDepth: 16
+  conditionAstMaximumNodes: 256
+  propertyPathMaximumDepth: 8
+  maximumFieldsPerResource: 1000
+  maximumBindingsPerCommand: 1000
+  rawSqlAllowed: false
+  dynamicCodeEnginesAllowed: false
+  unsupportedQueryShape: DENY
+  aggregateAndExportScopeParityRequired: true
+  unknownProtectedFieldWrite: DENY
+  unknownProtectedFieldRead: OMIT
+
+sharing:
+  crossTenantAllowed: false
+  allowedTargetTypes: [USER, TEAM]
+  maximumDurationSeconds: 31536000
+  maximumReshareDepth: 8
+  expiredOrRevokedDecision: DENY
+  staleProjectionCheckpoint: DENY_SHARED_BRANCH
+  revokeRequiresEpochFence: true
+
+fileSecurity:
+  maximumFileBytes: 53687091200
+  minimumPartBytes: 5242880
+  defaultPartBytes: 8388608
+  maximumPartCount: 10000
+  uploadSessionTtlSeconds: 86400
+  signedPartUrlTtlSeconds: 300
+  presignedDownloadTtlSeconds: 60
+  proxyDownloadTokenTtlSeconds: 30
+  clientHashTrusted: false
+  clientContentTypeTrusted: false
+  scanBeforeAccess: true
+  scanFailureBehavior: QUARANTINE_AND_DENY
+  infectedBehavior: QUARANTINE_AND_ALERT
+  executableUploadDefault: DENY
+  archiveAutomaticExtraction: false
+  highSecurityDownloadMode: PROXY
+  storageObjectKeyFromUserFilename: false
+  filenameNormalization: NFC
+  downloadResponseFilenameEncoding: RFC5987
+
+idempotency:
+  keyMinimumEntropyBits: 122
+  processingLeaseSeconds: 30
+  resultTtlSeconds: 86400
+  requestFingerprint: SHA-256
+  sameKeyDifferentFingerprint: REJECT
+
+transport:
+  minimumTlsVersion: TLSv1.2
+  preferTlsVersion: TLSv1.3
+  hstsMaxAgeSeconds: 31536000
+  hstsIncludeSubdomains: true
+  internalServiceAuthentication: mTLS-or-short-lived-service-token
+
+browser:
+  accessTokenStorage: memory-only
+  refreshTokenStorage: secure-http-only-cookie
+  csrfProtection: same-site-plus-origin-check
+  contentSecurityPolicy: required
+  frameAncestors: "'none'"
+  corsAllowCredentialsWithWildcardOrigin: false
+
+secrets:
+  sourceControlledProductionSecrets: forbidden
+  defaultProductionSecrets: forbidden
+  signingKeyCustody: external-kms-or-hsm
+  rotationOverlapSeconds: 600
+  encryptionAtRest: required-for-credential-and-token-material
+
+logging:
+  redactHeaders: [Authorization, Cookie, Set-Cookie, X-Service-Token]
+  neverLogFields: [password, accessToken, refreshToken, secret, privateKey, signedUrl, storageEtag, malwareSample]
+  hashTenantAndSubjectInOperationalLogs: true
+  securityAuditImmutableSink: required-in-production
+
+productionOverrideRules:
+  - "An override must be stricter or have a signed risk acceptance."
+  - "Secret values must be injected; they must not appear in this file."
+  - "TTL, rate and cost changes require tests and an ADR or change record."
+  - "A missing parameter causes startup failure in production."

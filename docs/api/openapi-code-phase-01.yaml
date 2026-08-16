@@ -1,0 +1,646 @@
+openapi: 3.1.0
+info:
+  title: Enterprise IAM CODE PHASE 01 API
+  version: 1.1.0
+  license: {name: Proprietary, identifier: LicenseRef-Proprietary}
+  description: >-
+    Normative API contract for the first vertical security loop. All 64-bit
+    identifiers are decimal strings. Undocumented request properties are
+    rejected for command payloads.
+servers:
+  - url: https://iam.example.invalid
+    description: Placeholder; environment configuration supplies the real URL.
+tags:
+  - {name: Authentication, description: Login session and token lifecycle.}
+  - {name: Tenant, description: Tenant bootstrap and lifecycle.}
+  - {name: User, description: Tenant user administration.}
+  - {name: Role, description: Tenant role and binding administration.}
+  - {name: Authorization, description: Internal authorization decisions and explain.}
+
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Authenticate a tenant user
+      security: []
+      x-iam-security-policy: PUBLIC_EXPLICIT
+      x-iam-idempotency-policy: EXPLICITLY_EXCLUDED_NON_REPLAYABLE_SECRET
+      x-iam-retry-semantics: A retry is a new authentication attempt and MUST NOT replay stored refresh plaintext.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication succeeded and a new refresh cookie is set.
+          headers:
+            Set-Cookie:
+              description: Exact refresh-cookie boundary; the value shown is synthetic.
+              schema:
+                type: string
+                pattern: '^IAM_REFRESH=rt1\.[A-Za-z0-9._:-]{1,128}\.[A-Za-z0-9_-]{43}; Path=/api/v1/auth; Secure; HttpOnly; SameSite=Strict$'
+                examples:
+                  - 'IAM_REFRESH=rt1.example.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA; Path=/api/v1/auth; Secure; HttpOnly; SameSite=Strict'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshSession
+      summary: Rotate a refresh token and issue access
+      security:
+        - refreshCookie: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Token rotated. A new refresh cookie is set.
+          headers:
+            Set-Cookie:
+              description: Exact rotated refresh-cookie boundary; the value shown is synthetic.
+              schema:
+                type: string
+                pattern: '^IAM_REFRESH=rt1\.[A-Za-z0-9._:-]{1,128}\.[A-Za-z0-9_-]{43}; Path=/api/v1/auth; Secure; HttpOnly; SameSite=Strict$'
+                examples:
+                  - 'IAM_REFRESH=rt1.example.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA; Path=/api/v1/auth; Secure; HttpOnly; SameSite=Strict'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Revoke the current session
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204': {description: Session revoked; repeated logout has the same effect.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /admin/v1/tenants/bootstrap:
+    post:
+      tags: [Tenant]
+      operationId: bootstrapTenant
+      summary: Bootstrap a tenant and initial administrator
+      security:
+        - bootstrapCredential: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantBootstrapRequest'
+      responses:
+        '202':
+          description: Bootstrap accepted; poll the returned tenant resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantBootstrapResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /admin/v1/users:
+    post:
+      tags: [User]
+      operationId: createUser
+      summary: Create a tenant user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /admin/v1/users/{userId}/disable:
+    post:
+      tags: [User]
+      operationId: disableUser
+      summary: Disable a user and invalidate sessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionedReasonCommand'
+      responses:
+        '200':
+          description: User disabled and affected sessions invalidated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /admin/v1/roles:
+    post:
+      tags: [Role]
+      operationId: createRole
+      summary: Create a tenant role
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '201':
+          description: Role created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /admin/v1/roles/{roleId}/permissions:
+    put:
+      tags: [Role]
+      operationId: replaceRolePermissions
+      summary: Replace a role permission set
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/RoleId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceRolePermissionsRequest'
+      responses:
+        '200':
+          description: Binding set replaced and permission version advanced.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RolePermissionResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /admin/v1/users/{userId}/roles/{roleId}:
+    put:
+      tags: [User, Role]
+      operationId: bindUserRole
+      summary: Bind a role to a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/RoleId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionCommand'
+      responses:
+        '204': {description: Binding exists; duplicate calls have the same effect.}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /internal/v1/authorization/check:
+    post:
+      tags: [Authorization]
+      operationId: checkAuthorization
+      summary: Evaluate an authorization decision
+      security:
+        - internalService: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizationCheckRequest'
+      responses:
+        '200':
+          description: A completed ALLOW or DENY decision; DENY is not an HTTP error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationCheckResponse'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+
+  /internal/v1/authorization/decisions/{decisionId}/explain:
+    get:
+      tags: [Authorization]
+      operationId: explainAuthorizationDecision
+      summary: Retrieve a sanitized decision explanation
+      security:
+        - internalService: []
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema: {$ref: '#/components/schemas/Id'}
+      responses:
+        '200':
+          description: Sanitized explanation. Sensitive policy values are omitted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExplainResponse'
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: IAM_REFRESH
+    bootstrapCredential:
+      type: http
+      scheme: bearer
+      bearerFormat: one-time-bootstrap-token
+    internalService:
+      type: mutualTLS
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUIDv4/UUIDv7 or equivalent value with at least 122 bits of entropy.
+      schema:
+        type: string
+        minLength: 20
+        maxLength: 128
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Id'}
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Id'}
+
+  responses:
+    BadRequest:
+      description: Invalid syntax, parameter or required idempotency key.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Unauthorized:
+      description: Authentication failed or token/session is invalid.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Forbidden:
+      description: Authenticated but not authorized.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    NotFound:
+      description: Resource is absent or deliberately not visible.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Conflict:
+      description: State, version or idempotency conflict.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Unprocessable:
+      description: Business invariant failed.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    TooManyRequests:
+      description: Rate or resource-consumption limit exceeded.
+      headers:
+        Retry-After: {schema: {type: integer, minimum: 1}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Unavailable:
+      description: Required security dependency unavailable; operation failed closed.
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+
+  schemas:
+    Id:
+      type: string
+      pattern: '^[1-9][0-9]{0,18}$'
+      maxLength: 19
+      description: Positive signed 64-bit decimal ID; the numeric value MUST be at most 9223372036854775807.
+      x-iam-numeric-maximum: 9223372036854775807
+    Timestamp:
+      type: string
+      format: date-time
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [tenantCode, identityType, identity, password]
+      properties:
+        tenantCode: {type: string, pattern: '^[a-z][a-z0-9-]{2,63}$'}
+        identityType: {type: string, enum: [USERNAME, EMAIL, PHONE]}
+        identity: {type: string, minLength: 1, maxLength: 320}
+        password: {type: string, minLength: 1, maxLength: 128, writeOnly: true}
+        deviceName: {type: string, maxLength: 128}
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, data, traceId]
+      properties:
+        success: {const: true}
+        code: {const: OK}
+        traceId: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [accessToken, tokenType, expiresIn, sessionId, userId, tenantId]
+          properties:
+            accessToken: {type: string, minLength: 16, maxLength: 8192, description: Sensitive response value; never persist in browser storage.}
+            tokenType: {const: Bearer}
+            expiresIn: {type: integer, minimum: 1, maximum: 300}
+            sessionId: {$ref: '#/components/schemas/Id'}
+            userId: {$ref: '#/components/schemas/Id'}
+            tenantId: {$ref: '#/components/schemas/Id'}
+    RefreshResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, data, traceId]
+      properties:
+        success: {const: true}
+        code: {const: OK}
+        traceId: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [accessToken, tokenType, expiresIn, sessionId]
+          properties:
+            accessToken: {type: string, minLength: 16, maxLength: 8192, description: Sensitive response value; never persist in browser storage.}
+            tokenType: {const: Bearer}
+            expiresIn: {type: integer, minimum: 1, maximum: 300}
+            sessionId: {$ref: '#/components/schemas/Id'}
+    TenantBootstrapRequest:
+      type: object
+      additionalProperties: false
+      required: [tenantCode, tenantName, initialAdmin]
+      properties:
+        tenantCode: {type: string, pattern: '^[a-z][a-z0-9-]{2,63}$'}
+        tenantName: {type: string, minLength: 1, maxLength: 128}
+        initialAdmin:
+          type: object
+          additionalProperties: false
+          required: [identityType, identity, displayName, initialPassword]
+          properties:
+            identityType: {type: string, enum: [USERNAME, EMAIL, PHONE]}
+            identity: {type: string, minLength: 1, maxLength: 320}
+            displayName: {type: string, minLength: 1, maxLength: 128}
+            initialPassword: {type: string, minLength: 15, maxLength: 128, writeOnly: true}
+    TenantBootstrapResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, data, traceId]
+      properties:
+        success: {const: true}
+        code: {const: ACCEPTED}
+        traceId: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [tenantId, status, operationId]
+          properties:
+            tenantId: {$ref: '#/components/schemas/Id'}
+            status: {type: string, enum: [INITIALIZING]}
+            operationId: {$ref: '#/components/schemas/Id'}
+    CreateUserRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName, identity]
+      properties:
+        displayName: {type: string, minLength: 1, maxLength: 128}
+        identity:
+          type: object
+          additionalProperties: false
+          required: [type, value]
+          properties:
+            type: {type: string, enum: [USERNAME, EMAIL, PHONE]}
+            value: {type: string, minLength: 1, maxLength: 320}
+        initialPassword: {type: string, minLength: 15, maxLength: 128, writeOnly: true}
+    UserResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, data, traceId]
+      properties:
+        success: {const: true}
+        code: {const: OK}
+        traceId: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [userId, status, version]
+          properties:
+            userId: {$ref: '#/components/schemas/Id'}
+            status: {type: string, enum: [INVITED, ACTIVE, DISABLED]}
+            version: {type: integer, minimum: 0}
+    CreateRoleRequest:
+      type: object
+      additionalProperties: false
+      required: [roleCode, roleName]
+      properties:
+        roleCode: {type: string, pattern: '^[A-Z][A-Z0-9_]{2,63}$'}
+        roleName: {type: string, minLength: 1, maxLength: 128}
+        description: {type: [string, 'null'], maxLength: 500}
+    RoleResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, data, traceId]
+      properties:
+        success: {const: true}
+        code: {const: OK}
+        traceId: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [roleId, status, version]
+          properties:
+            roleId: {$ref: '#/components/schemas/Id'}
+            status: {type: string, enum: [ACTIVE, DISABLED]}
+            version: {type: integer, minimum: 0}
+    VersionCommand:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: {type: integer, minimum: 0}
+    VersionedReasonCommand:
+      type: object
+      additionalProperties: false
+      required: [version, reason]
+      properties:
+        version: {type: integer, minimum: 0}
+        reason: {type: string, minLength: 1, maxLength: 500}
+    ReplaceRolePermissionsRequest:
+      type: object
+      additionalProperties: false
+      required: [roleVersion, permissionIds]
+      properties:
+        roleVersion: {type: integer, minimum: 0}
+        permissionIds:
+          type: array
+          uniqueItems: true
+          maxItems: 1000
+          items: {$ref: '#/components/schemas/Id'}
+    RolePermissionResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, data, traceId]
+      properties:
+        success: {const: true}
+        code: {const: OK}
+        traceId: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [roleId, roleVersion, permissionVersion]
+          properties:
+            roleId: {$ref: '#/components/schemas/Id'}
+            roleVersion: {type: integer, minimum: 1}
+            permissionVersion: {type: integer, minimum: 1}
+    AuthorizationCheckRequest:
+      type: object
+      additionalProperties: false
+      required: [tenantId, subjectId, sessionId, resourceId, operationId, permissionVersion, requestId]
+      properties:
+        tenantId: {$ref: '#/components/schemas/Id'}
+        subjectId: {$ref: '#/components/schemas/Id'}
+        sessionId: {$ref: '#/components/schemas/Id'}
+        resourceId: {$ref: '#/components/schemas/Id'}
+        operationId: {$ref: '#/components/schemas/Id'}
+        resourceInstanceId: {type: [string, 'null'], maxLength: 128}
+        permissionVersion: {type: integer, minimum: 0}
+        requestId: {type: string, minLength: 8, maxLength: 128}
+        context:
+          type: object
+          maxProperties: 32
+          additionalProperties:
+            type: [string, number, integer, boolean, 'null']
+    AuthorizationCheckResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, data, traceId]
+      properties:
+        success: {const: true}
+        code: {const: OK}
+        traceId: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [decision, reasonCode, decisionId, permissionVersion, matchedGrantIds, obligations, evaluatedAt]
+          properties:
+            decision: {type: string, enum: [ALLOW, DENY]}
+            reasonCode: {type: string, pattern: '^IAM_AUTHZ_[A-Z0-9_]+$'}
+            decisionId: {$ref: '#/components/schemas/Id'}
+            permissionVersion: {type: integer, minimum: 0}
+            matchedGrantIds:
+              type: array
+              maxItems: 100
+              items: {$ref: '#/components/schemas/Id'}
+            obligations: {type: object, additionalProperties: true}
+            evaluatedAt: {$ref: '#/components/schemas/Timestamp'}
+    ExplainResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, data, traceId]
+      properties:
+        success: {const: true}
+        code: {const: OK}
+        traceId: {type: string}
+        data:
+          type: object
+          additionalProperties: false
+          required: [decisionId, decision, reasonCode, evaluatedAt, sanitizedSteps]
+          properties:
+            decisionId: {$ref: '#/components/schemas/Id'}
+            decision: {type: string, enum: [ALLOW, DENY]}
+            reasonCode: {type: string}
+            evaluatedAt: {$ref: '#/components/schemas/Timestamp'}
+            sanitizedSteps:
+              type: array
+              maxItems: 100
+              items: {type: string, maxLength: 500}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, traceId]
+      properties:
+        success: {const: false}
+        code: {type: string, pattern: '^IAM_[A-Z0-9_]+$'}
+        message: {type: string, maxLength: 500}
+        traceId: {type: string}
+        details:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            additionalProperties: false
+            required: [field, reason]
+            properties:
+              field: {type: string, maxLength: 128}
+              reason: {type: string, maxLength: 256}
