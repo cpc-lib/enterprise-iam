@@ -3,6 +3,56 @@ spring:
     name: iam-gateway
   main:
     banner-mode: "off"
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: iam-auth
+              uri: ${IAM_AUTH_URI:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/auth, /api/v1/auth/**, /.well-known/jwks.json, /admin/v1/sessions, /admin/v1/sessions/**
+            - id: iam-identity
+              uri: ${IAM_IDENTITY_URI:http://localhost:8082}
+              predicates:
+                - Path=/admin/v1/navigation, /admin/v1/navigation/**, /admin/v1/roles, /admin/v1/roles/**, /admin/v1/tenants, /admin/v1/tenants/**, /admin/v1/users, /admin/v1/users/**, /admin/v1/menus, /admin/v1/menus/**, /admin/v1/dicts, /admin/v1/dicts/**, /api/v1/sod-policies, /api/v1/sod-policies/**, /api/v1/approvals, /api/v1/approvals/**
+            - id: iam-organization
+              uri: ${IAM_ORGANIZATION_URI:http://localhost:8083}
+              predicates:
+                - Path=/admin/v1/organizations, /admin/v1/organizations/**, /admin/v1/departments, /admin/v1/departments/**, /admin/v1/positions, /admin/v1/positions/**, /admin/v1/teams, /admin/v1/teams/**
+            - id: iam-authorization
+              uri: ${IAM_AUTHORIZATION_URI:http://localhost:8084}
+              predicates:
+                - Path=/admin/v1/data-scopes, /admin/v1/data-scopes/**, /admin/v1/field-policies, /admin/v1/field-policies/**, /admin/v1/resources, /admin/v1/resources/**, /admin/v1/role-permissions, /admin/v1/role-permissions/**, /admin/v1/team-roles, /admin/v1/team-roles/**, /internal/v1/authorization, /internal/v1/authorization/**, /api/v1/abac-policies, /api/v1/abac-policies/**
+            - id: iam-sharing
+              uri: ${IAM_SHARING_URI:http://localhost:8085}
+              predicates:
+                - Path=/api/v1/shares, /api/v1/shares/**
+            - id: iam-file
+              uri: ${IAM_FILE_URI:http://localhost:8086}
+              predicates:
+                - Path=/api/v1/files, /api/v1/files/**, /api/v1/file-uploads, /api/v1/file-uploads/**
+            - id: iam-audit
+              uri: ${IAM_AUDIT_URI:http://localhost:8087}
+              predicates:
+                - Path=/admin/v1/audit-logs, /admin/v1/audit-logs/**, /admin/v1/audit, /admin/v1/audit/**, /api/v1/audit, /api/v1/audit/**
+            - id: iam-job
+              uri: ${IAM_JOB_URI:http://localhost:8088}
+              predicates:
+                - Path=/admin/v1/jobs, /admin/v1/jobs/**
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns: "*"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - PATCH
+                  - OPTIONS
+                allowedHeaders: "*"
+                allowCredentials: true
 
 server:
   port: ${SERVER_PORT:8080}
@@ -32,5 +82,13 @@ iam:
       unknown-key-refresh-minimum-interval: 5s
       jwks-connect-timeout: 2s
       jwks-request-timeout: 3s
+      # DEV-ONLY: permits the plain-HTTP JWKS loader (docker compose / localhost).
+      # Production requires TLS termination and the strict HTTPS loader.
+      jwks-allow-http: ${IAM_GATEWAY_ACCESS_AUTHENTICATION_JWKS_ALLOW_HTTP:false}
     delegation:
       enabled: ${IAM_GATEWAY_DELEGATION_ENABLED:false}
+      # PKCS#8 EC P-256 private key for ES256 delegation-token signing (inline PEM or file path).
+      # PEM may be a single line with \n escapes. Required when delegation is enabled.
+      private-key-pem: ${IAM_GATEWAY_DELEGATION_PRIVATE_KEY_PEM:}
+      private-key-path: ${IAM_GATEWAY_DELEGATION_PRIVATE_KEY_PATH:}
+      delegation-key-id: ${IAM_GATEWAY_DELEGATION_KEY_ID:}

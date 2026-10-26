@@ -6,4 +6,8 @@ public class RefreshRotationException extends SessionIssuanceException {
     public RefreshRotationException(String message) {
         super(message);
     }
+
+    public RefreshRotationException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

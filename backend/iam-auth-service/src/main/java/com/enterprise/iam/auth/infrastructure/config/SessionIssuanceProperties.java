@@ -14,6 +14,9 @@ public final class SessionIssuanceProperties {
     private Duration refreshTokenTtl = Duration.ofDays(14);
     private int maximumConcurrentSessions = 10;
     private Duration transactionTimeout = Duration.ofSeconds(5);
+    private Duration loginDeliveryConfirmationTtl = Duration.ofSeconds(60);
+    private Duration orphanReconciliationPollDelay = Duration.ofSeconds(10);
+    private int orphanReconciliationBatchSize = 50;
 
     public void validateEnabled() {
         if (!enabled) {
@@ -31,9 +34,17 @@ public final class SessionIssuanceProperties {
                 absoluteTtl, "refresh-token-ttl");
         requireWholeSecondDuration(transactionTimeout, Duration.ofSeconds(1),
                 Duration.ofSeconds(30), "transaction-timeout");
+        requireWholeSecondDuration(loginDeliveryConfirmationTtl, Duration.ofSeconds(10),
+                Duration.ofMinutes(10), "login-delivery-confirmation-ttl");
+        requireWholeSecondDuration(orphanReconciliationPollDelay, Duration.ofSeconds(1),
+                Duration.ofMinutes(1), "orphan-reconciliation-poll-delay");
         if (maximumConcurrentSessions < 1 || maximumConcurrentSessions > 100) {
             throw new IllegalStateException(
                     "iam.auth.session-issuance.maximum-concurrent-sessions must be 1..100");
+        }
+        if (orphanReconciliationBatchSize < 1 || orphanReconciliationBatchSize > 500) {
+            throw new IllegalStateException(
+                    "iam.auth.session-issuance.orphan-reconciliation-batch-size must be 1..500");
         }
     }
 
@@ -104,5 +115,29 @@ public final class SessionIssuanceProperties {
 
     public void setTransactionTimeout(Duration transactionTimeout) {
         this.transactionTimeout = transactionTimeout;
+    }
+
+    public Duration getLoginDeliveryConfirmationTtl() {
+        return loginDeliveryConfirmationTtl;
+    }
+
+    public void setLoginDeliveryConfirmationTtl(Duration loginDeliveryConfirmationTtl) {
+        this.loginDeliveryConfirmationTtl = loginDeliveryConfirmationTtl;
+    }
+
+    public Duration getOrphanReconciliationPollDelay() {
+        return orphanReconciliationPollDelay;
+    }
+
+    public void setOrphanReconciliationPollDelay(Duration orphanReconciliationPollDelay) {
+        this.orphanReconciliationPollDelay = orphanReconciliationPollDelay;
+    }
+
+    public int getOrphanReconciliationBatchSize() {
+        return orphanReconciliationBatchSize;
+    }
+
+    public void setOrphanReconciliationBatchSize(int orphanReconciliationBatchSize) {
+        this.orphanReconciliationBatchSize = orphanReconciliationBatchSize;
     }
 }

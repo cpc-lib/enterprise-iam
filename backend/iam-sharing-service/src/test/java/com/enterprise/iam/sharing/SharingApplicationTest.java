@@ -8,7 +8,10 @@ import org.springframework.boot.test.context.SpringBootTest;
         webEnvironment = SpringBootTest.WebEnvironment.NONE,
         properties = {
                 "spring.main.web-application-type=none",
-                "management.endpoints.access.default=none"
+                "management.endpoints.access.default=none",
+                "spring.autoconfigure.exclude="
+                        + "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
+                        + "org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration"
         })
 class SharingApplicationTest {
 

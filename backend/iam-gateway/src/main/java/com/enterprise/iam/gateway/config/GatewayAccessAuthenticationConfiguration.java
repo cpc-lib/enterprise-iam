@@ -20,6 +20,7 @@ import com.enterprise.iam.gateway.security.jwks.AllowlistedHttpsAccessTokenJwkSe
 import com.enterprise.iam.gateway.security.jwks.JavaHttpClientJwksTransport;
 import com.enterprise.iam.gateway.security.jwks.JwksDnsResolver;
 import com.enterprise.iam.gateway.security.jwks.JwksHttpTransport;
+import com.enterprise.iam.gateway.security.jwks.PlainHttpAccessTokenJwkSetLoader;
 import com.enterprise.iam.gateway.security.jwks.SystemJwksDnsResolver;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -69,6 +70,13 @@ public class GatewayAccessAuthenticationConfiguration {
             JwksHttpTransport transport,
             GatewayAccessAuthenticationProperties properties) {
         properties.validateJwksTransportConfiguration();
+        if (properties.isJwksAllowHttp()) {
+            return new PlainHttpAccessTokenJwkSetLoader(
+                    properties.getJwksUri(),
+                    properties.getJwksAllowedHosts(),
+                    transport,
+                    properties.getJwksRequestTimeout());
+        }
         return new AllowlistedHttpsAccessTokenJwkSetLoader(
                 properties.getJwksUri(),
                 properties.getJwksAllowedHosts(),

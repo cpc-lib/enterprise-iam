@@ -8,14 +8,18 @@ import com.enterprise.iam.auth.application.port.out.PositiveIdGenerator;
 import com.enterprise.iam.auth.application.service.RefreshRotationPolicy;
 import com.enterprise.iam.auth.domain.model.ResolvedLoginIdentity;
 import com.enterprise.iam.auth.infrastructure.config.SessionIssuanceProperties;
+import com.enterprise.iam.auth.infrastructure.outbox.JdbcLoginAuditOutboxAppender;
 import com.enterprise.iam.auth.infrastructure.outbox.JdbcSessionProjectionOutboxAppender;
+import com.enterprise.iam.auth.infrastructure.outbox.LoginAuditEventCodec;
 import com.enterprise.iam.auth.infrastructure.outbox.SessionProjectionEventCodec;
+import com.enterprise.iam.auth.infrastructure.persistence.mapper.AuthPersistenceMapper;
 import com.enterprise.iam.auth.infrastructure.security.HmacSha256RefreshTokenHasher;
 import com.enterprise.iam.auth.infrastructure.security.RefreshTokenHashKey;
 import com.enterprise.iam.auth.infrastructure.security.SecureOpaqueRefreshTokenGenerator;
 import com.enterprise.iam.common.security.access.AccessTokenSigner;
 import com.enterprise.iam.common.security.access.SignedAccessToken;
 import com.enterprise.iam.outbox.JdbcOutboxWriter;
+import com.enterprise.iam.outbox.mapper.OutboxPersistenceMapper;
 import com.enterprise.iam.testsupport.database.MySqlIntegrationDatabase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.flywaydb.core.Flyway;
@@ -60,6 +64,8 @@ class TransactionalJdbcRefreshTokenRotatorIT {
     private static MySqlIntegrationDatabase mysql;
 
     private JdbcTemplate jdbc;
+    private AuthPersistenceMapper mapper;
+    private OutboxPersistenceMapper outboxMapper;
     private DataSourceTransactionManager transactionManager;
 
     @BeforeAll
@@ -79,6 +85,8 @@ class TransactionalJdbcRefreshTokenRotatorIT {
         DataSource dataSource = new DriverManagerDataSource(
                 mysql.jdbcUrl(), mysql.username(), mysql.password());
         jdbc = new JdbcTemplate(dataSource);
+        mapper = AuthPersistenceTestMapperFactory.create(dataSource);
+        outboxMapper = AuthPersistenceTestMapperFactory.createOutbox(dataSource);
         transactionManager = new DataSourceTransactionManager(dataSource);
         Flyway.configure()
                 .dataSource(dataSource)
@@ -88,6 +96,7 @@ class TransactionalJdbcRefreshTokenRotatorIT {
                 .load()
                 .migrate();
         jdbc.update("DELETE FROM sys_outbox_event");
+        jdbc.update("DELETE FROM iam_login_delivery");
         jdbc.update("DELETE FROM iam_refresh_token");
         jdbc.update("DELETE FROM iam_login_session");
         jdbc.update("DELETE FROM iam_user_security_state");
@@ -137,8 +146,11 @@ class TransactionalJdbcRefreshTokenRotatorIT {
             assertThat(jdbc.queryForObject("""
                     SELECT session_version FROM iam_login_session WHERE session_id = ?
                     """, Long.class, issued.sessionId())).isEqualTo(2);
+            assertThat(jdbc.queryForObject("""
+                    SELECT delivery_status FROM iam_login_delivery WHERE session_id = ?
+                    """, String.class, issued.sessionId())).isEqualTo("CONFIRMED");
             assertThat(jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM sys_outbox_event", Long.class)).isEqualTo(2);
+                    "SELECT COUNT(*) FROM sys_outbox_event", Long.class)).isEqualTo(3);
             assertThat(jdbc.queryForObject("""
                     SELECT JSON_UNQUOTE(JSON_EXTRACT(payload, '$.sessionVersion'))
                     FROM sys_outbox_event ORDER BY id DESC LIMIT 1
@@ -191,7 +203,7 @@ class TransactionalJdbcRefreshTokenRotatorIT {
                     SELECT revoke_reason FROM iam_login_session WHERE session_id = ?
                     """, String.class, issued.sessionId())).isEqualTo("REFRESH_TOKEN_REUSE");
             assertThat(jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM sys_outbox_event", Long.class)).isEqualTo(3);
+                    "SELECT COUNT(*) FROM sys_outbox_event", Long.class)).isEqualTo(4);
             assertThat(jdbc.queryForObject("""
                     SELECT JSON_UNQUOTE(JSON_EXTRACT(payload, '$.status'))
                     FROM sys_outbox_event ORDER BY id DESC LIMIT 1
@@ -231,13 +243,13 @@ class TransactionalJdbcRefreshTokenRotatorIT {
         assertThat(jdbc.queryForObject(
                 "SELECT status FROM iam_refresh_token", String.class)).isEqualTo("ACTIVE");
         assertThat(jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_outbox_event", Long.class)).isEqualTo(1);
+                "SELECT COUNT(*) FROM sys_outbox_event", Long.class)).isEqualTo(2);
     }
 
     @Test
     void expiredActiveTokenIsRejectedWithoutFamilyRevocation() {
         seedSessionAndToken(
-                "ACTIVE", NOW.minusSeconds(3_600),
+                "ACTIVE", NOW.minusSeconds(30),
                 "ACTIVE", NOW.plusSeconds(1_800), NOW.plusSeconds(86_400));
         TransactionalJdbcRefreshTokenRotator rotator = rotator(400_000);
 
@@ -267,15 +279,14 @@ class TransactionalJdbcRefreshTokenRotatorIT {
 
         assertThat(result.rotated()).isFalse();
         assertThat(jdbc.queryForObject(
-                "SELECT status FROM iam_refresh_token", String.class)).isEqualTo("REVOKED");
+                "SELECT status FROM iam_refresh_token", String.class)).isEqualTo("REUSED");
         assertThat(jdbc.queryForObject(
-                "SELECT session_version FROM iam_login_session", Long.class)).isEqualTo(2);
+                "SELECT revoke_reason FROM iam_refresh_token", String.class))
+                .isEqualTo("REUSE_DETECTED");
         assertThat(jdbc.queryForObject(
-                "SELECT COUNT(*) FROM sys_outbox_event", Long.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("""
-                SELECT JSON_UNQUOTE(JSON_EXTRACT(payload, '$.status'))
-                FROM sys_outbox_event
-                """, String.class)).isEqualTo("REVOKED");
+                "SELECT session_version FROM iam_login_session", Long.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM sys_outbox_event", Long.class)).isZero();
     }
 
     @Test
@@ -363,24 +374,27 @@ class TransactionalJdbcRefreshTokenRotatorIT {
 
     private TransactionalJdbcLoginSessionIssuer issuer() {
         return new TransactionalJdbcLoginSessionIssuer(
-                jdbc,
+                mapper,
                 transactionManager,
                 successfulSigner(),
                 sequentialIds(1_000),
-                new SecureOpaqueRefreshTokenGenerator(distinctRandom(), KEY),
+                new SecureOpaqueRefreshTokenGenerator(distinctRandom(0x40), KEY),
                 new HmacSha256RefreshTokenHasher(KEY),
                 appender(),
+                new JdbcLoginAuditOutboxAppender(
+                        new JdbcOutboxWriter(outboxMapper),
+                        new LoginAuditEventCodec(new ObjectMapper().findAndRegisterModules())),
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 properties(ISSUER_IDLE));
     }
 
     private TransactionalJdbcRefreshTokenRotator rotator(long initialId) {
         return new TransactionalJdbcRefreshTokenRotator(
-                jdbc,
+                mapper,
                 transactionManager,
                 successfulSigner(),
                 sequentialIds(initialId),
-                new SecureOpaqueRefreshTokenGenerator(distinctRandom(), KEY),
+                new SecureOpaqueRefreshTokenGenerator(distinctRandom(0x70), KEY),
                 new HmacSha256RefreshTokenHasher(KEY),
                 appender(),
                 new RefreshRotationPolicy(),
@@ -390,7 +404,8 @@ class TransactionalJdbcRefreshTokenRotatorIT {
 
     private JdbcSessionProjectionOutboxAppender appender() {
         return new JdbcSessionProjectionOutboxAppender(
-                new JdbcOutboxWriter(jdbc), new SessionProjectionEventCodec(new ObjectMapper()));
+                new JdbcOutboxWriter(outboxMapper),
+                new SessionProjectionEventCodec(new ObjectMapper()));
     }
 
     private static PositiveIdGenerator sequentialIds(long initialId) {
@@ -399,12 +414,12 @@ class TransactionalJdbcRefreshTokenRotatorIT {
     }
 
     /** Distinct bytes per generation so successor hashes never collide. */
-    private static SecureRandom distinctRandom() {
+    private static SecureRandom distinctRandom(int initialByte) {
         AtomicInteger calls = new AtomicInteger();
         return new SecureRandom() {
             @Override
             public void nextBytes(byte[] bytes) {
-                Arrays.fill(bytes, (byte) (0x40 + calls.getAndIncrement() % 0x30));
+                Arrays.fill(bytes, (byte) (initialByte + calls.getAndIncrement() % 0x10));
             }
         };
     }

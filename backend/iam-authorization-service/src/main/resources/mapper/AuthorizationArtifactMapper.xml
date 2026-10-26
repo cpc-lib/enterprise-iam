@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.authorization.infrastructure.persistence.mapper.AuthorizationArtifactMapper">
+
+    <sql id="artifactColumns">
+        ref, tenant_id, subject_id, resource_id, operation_id,
+        permission_version, decision_id, payload_json, expires_at
+    </sql>
+
+    <insert id="insertDataPredicateArtifact">
+        INSERT INTO iam_data_predicate_artifact
+            (<include refid="artifactColumns" />)
+        VALUES (#{ref}, #{tenantId}, #{subjectId}, #{resourceId}, #{operationId},
+            #{permissionVersion}, #{decisionId}, #{payloadJson}, #{expiresAt})
+    </insert>
+
+    <select id="selectActiveDataPredicateArtifact"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ArtifactRow">
+        SELECT <include refid="artifactColumns" />
+        FROM iam_data_predicate_artifact
+        WHERE ref = #{ref} AND expires_at &gt; #{now}
+    </select>
+
+    <insert id="insertFieldReadPlanArtifact">
+        INSERT INTO iam_field_read_plan_artifact
+            (<include refid="artifactColumns" />)
+        VALUES (#{ref}, #{tenantId}, #{subjectId}, #{resourceId}, #{operationId},
+            #{permissionVersion}, #{decisionId}, #{payloadJson}, #{expiresAt})
+    </insert>
+
+    <select id="selectActiveFieldReadPlanArtifact"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ArtifactRow">
+        SELECT <include refid="artifactColumns" />
+        FROM iam_field_read_plan_artifact
+        WHERE ref = #{ref} AND expires_at &gt; #{now}
+    </select>
+
+    <insert id="insertFieldWritePlanArtifact">
+        INSERT INTO iam_field_write_plan_artifact
+            (<include refid="artifactColumns" />)
+        VALUES (#{ref}, #{tenantId}, #{subjectId}, #{resourceId}, #{operationId},
+            #{permissionVersion}, #{decisionId}, #{payloadJson}, #{expiresAt})
+    </insert>
+
+    <select id="selectActiveFieldWritePlanArtifact"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ArtifactRow">
+        SELECT <include refid="artifactColumns" />
+        FROM iam_field_write_plan_artifact
+        WHERE ref = #{ref} AND expires_at &gt; #{now}
+    </select>
+</mapper>

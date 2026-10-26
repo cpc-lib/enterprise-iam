@@ -9,6 +9,8 @@ import com.enterprise.iam.gateway.delegation.GatewayDelegationFilter;
 import com.enterprise.iam.gateway.security.ExternalIdentityHeaderSanitizingFilter;
 import com.enterprise.iam.gateway.security.GatewayAccessAuthenticationFilter;
 import com.enterprise.iam.gateway.security.ReactiveSessionSnapshotReader;
+import com.enterprise.iam.gateway.security.jwks.AllowlistedHttpsAccessTokenJwkSetLoader;
+import com.enterprise.iam.gateway.security.jwks.PlainHttpAccessTokenJwkSetLoader;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -89,6 +91,40 @@ class GatewayAccessAuthenticationConfigurationTest {
                         "iam.gateway.access-authentication.jwks-uri=http://auth.example.net/jwks.json",
                         "iam.gateway.access-authentication.jwks-allowed-hosts[0]=auth.example.net")
                 .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void createsPlainHttpLoaderOnlyWhenExplicitlyAllowed() {
+        contextRunner
+                .withBean(ReactiveStringRedisTemplate.class,
+                        () -> mock(ReactiveStringRedisTemplate.class, RETURNS_DEEP_STUBS))
+                .withPropertyValues(
+                        "iam.gateway.access-authentication.enabled=true",
+                        "iam.gateway.access-authentication.jwks-uri=http://iam-auth-service:8081/internal/v1/crypto/jwks.json",
+                        "iam.gateway.access-authentication.jwks-allowed-hosts[0]=iam-auth-service",
+                        "iam.gateway.access-authentication.jwks-allow-http=true")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(AccessTokenJwkSetLoader.class))
+                            .isInstanceOf(PlainHttpAccessTokenJwkSetLoader.class);
+                });
+    }
+
+    @Test
+    void keepsHttpsLoaderWhenAllowHttpDisabled() {
+        contextRunner
+                .withBean(ReactiveStringRedisTemplate.class,
+                        () -> mock(ReactiveStringRedisTemplate.class, RETURNS_DEEP_STUBS))
+                .withPropertyValues(
+                        "iam.gateway.access-authentication.enabled=true",
+                        "iam.gateway.access-authentication.jwks-uri=https://auth.example.net/.well-known/jwks.json",
+                        "iam.gateway.access-authentication.jwks-allowed-hosts[0]=auth.example.net",
+                        "iam.gateway.access-authentication.jwks-allow-http=false")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(AccessTokenJwkSetLoader.class))
+                            .isInstanceOf(AllowlistedHttpsAccessTokenJwkSetLoader.class);
+                });
     }
 
     @Test

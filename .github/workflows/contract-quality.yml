@@ -4,6 +4,7 @@ name: contract-quality
   pull_request:
     paths:
       - 'docs/**'
+      - 'backend/**'
       - 'tools/validate_code_ready_spec.py'
       - 'tools/validate_phase01_core.py'
       - 'tools/validate_auth_crypto.py'
@@ -12,12 +13,16 @@ name: contract-quality
       - 'tools/validate_trust_adapters.py'
       - 'tools/validate_session_projection_outbox.py'
       - 'tools/validate_session_issuance.py'
+      - 'tools/validate_ddl_enum_consistency.py'
+      - 'tools/validate_api_contract_consistency.py'
+      - 'tools/validate_mybatis_xml_persistence.py'
       - 'tools/requirements-contracts.txt'
       - '.github/workflows/contract-quality.yml'
   push:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'backend/**'
       - 'tools/validate_code_ready_spec.py'
       - 'tools/validate_phase01_core.py'
       - 'tools/validate_auth_crypto.py'
@@ -26,7 +31,11 @@ name: contract-quality
       - 'tools/validate_trust_adapters.py'
       - 'tools/validate_session_projection_outbox.py'
       - 'tools/validate_session_issuance.py'
+      - 'tools/validate_ddl_enum_consistency.py'
+      - 'tools/validate_api_contract_consistency.py'
+      - 'tools/validate_mybatis_xml_persistence.py'
       - 'tools/requirements-contracts.txt'
+      - '.github/workflows/contract-quality.yml'
 
 permissions:
   contents: read
@@ -77,3 +86,9 @@ jobs:
           for spec in docs/events/asyncapi-code-phase-*.yaml; do
             npx --yes @asyncapi/cli@6.0.2 validate "$spec"
           done
+      - name: Validate DDL CHECK enum vs Java domain enums (SPEC 47 G-1)
+        run: python tools/validate_ddl_enum_consistency.py
+      - name: Validate OpenAPI vs controller routes (SPEC 47 G-2)
+        run: python tools/validate_api_contract_consistency.py
+      - name: Validate MyBatis-Plus XML persistence boundary
+        run: python tools/validate_mybatis_xml_persistence.py

@@ -9,7 +9,7 @@ import org.springframework.web.util.pattern.PathPatternParser;
 import java.util.List;
 import java.util.Objects;
 
-/** Matches only explicitly configured internal paths. */
+/** Matches explicitly configured service paths without permitting broad public-API patterns. */
 public final class PathPatternDelegationRequestMatcher implements RequestMatcher {
 
     private final List<PathPattern> patterns;
@@ -21,7 +21,7 @@ public final class PathPatternDelegationRequestMatcher implements RequestMatcher
         }
         PathPatternParser parser = new PathPatternParser();
         this.patterns = patterns.stream()
-                .map(PathPatternDelegationRequestMatcher::requireInternalPattern)
+                .map(PathPatternDelegationRequestMatcher::requireServicePattern)
                 .map(parser::parse)
                 .toList();
     }
@@ -40,14 +40,20 @@ public final class PathPatternDelegationRequestMatcher implements RequestMatcher
         return patterns.stream().anyMatch(pattern -> pattern.matches(path));
     }
 
-    private static String requireInternalPattern(String value) {
+    private static String requireServicePattern(String value) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("protected path must not be blank");
         }
         String pattern = value.trim();
-        if (!(pattern.equals("/internal") || pattern.startsWith("/internal/"))) {
+        boolean internalPattern = pattern.equals("/internal")
+                || pattern.startsWith("/internal/");
+        boolean exactApiPath = pattern.startsWith("/api/")
+                && !pattern.contains("*")
+                && !pattern.contains("{")
+                && !pattern.contains("}");
+        if (!internalPattern && !exactApiPath) {
             throw new IllegalArgumentException(
-                    "delegation protected paths must remain below /internal");
+                    "delegation protected paths must remain below /internal or be exact /api paths");
         }
         return pattern;
     }

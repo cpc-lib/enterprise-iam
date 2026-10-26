@@ -38,17 +38,20 @@ centrally managed dependency versions, frozen service packages, launchers,
 smoke tests, ports, service-config secret defaults, authorization precedence,
 delegation policy, Gateway header sanitization and canonical migration copies.
 
-`mvn verify` also runs three Failsafe integration suites against pinned MySQL
-8.4.9 Testcontainers. Docker is a required test dependency; the integration
-suite is not silently skipped when Docker is unavailable.
+`mvn verify` also runs six Failsafe integration suites (27 tests) against
+pinned MySQL 8.4.9 Testcontainers: three Flyway suites, JDBC idempotency,
+transactional login/password change and refresh rotation. Docker is a required
+test dependency; the integration suite is not silently skipped when Docker is
+unavailable. Windows Docker 29/npipe hosts may require
+`mvn verify -Dapi.version=1.44` for client API negotiation.
 
 ## Boundary
 
 Framework modules contain only reusable technical capabilities. Business
 aggregates, repositories and policies remain owned by their service bounded
-context. This package implements a Phase-01 security core, token/JWKS/session
-trust adapters, a reusable session-projection outbox and a concrete opt-in JDBC
-login-session issuer. Production KMS/HSM signing, refresh-key provisioning,
-login HTTP/Cookie delivery, refresh/revoke/disable/expiry commands,
-authorization repositories/endpoints and the golden authorization path remain
-open.
+context. This package implements the Phase-01 security core, token/JWKS/session
+trust adapters, session-projection outbox, transactional login/password change
+and refresh flows, authorization repositories/endpoints, and DDD persistence
+adapters backed by MyBatis-Plus with XML SQL. Production KMS/HSM signing,
+refresh-key provisioning and deployed Gateway/broker/cache end-to-end evidence
+remain open.

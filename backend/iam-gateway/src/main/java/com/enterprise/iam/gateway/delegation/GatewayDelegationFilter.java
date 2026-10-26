@@ -88,6 +88,8 @@ public final class GatewayDelegationFilter implements GlobalFilter, Ordered {
                     headers.remove(HttpHeaders.AUTHORIZATION);
                     headers.remove(DELEGATION_HEADER);
                     headers.set(DELEGATION_HEADER, compactToken);
+                    headers.set("X-Tenant-Id", String.valueOf(principal.tenantId()));
+                    headers.set("X-User-Id", String.valueOf(principal.subjectId()));
                 })
                 .build();
         return chain.filter(exchange.mutate().request(request).build());

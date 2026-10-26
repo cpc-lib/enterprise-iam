@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.authorization.infrastructure.persistence.mapper.AuthorizationPolicyMapper">
+
+    <select id="selectTenantPermissionVersion" resultType="long">
+        SELECT version_value
+        FROM iam_permission_version
+        WHERE tenant_id = #{tenantId} AND scope_type = 'TENANT' AND subject_id = 0
+    </select>
+
+    <select id="selectResourceOperationEnabled" resultType="boolean">
+        SELECT enabled
+        FROM iam_resource_operation
+        WHERE tenant_id = #{tenantId} AND resource_id = #{resourceId}
+          AND operation_id = #{operationId}
+    </select>
+
+    <select id="selectRoleGrants"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.AuthorizationGrantRow">
+        SELECT rp.id AS grant_id, rp.tenant_id, ur.user_id AS subject_id,
+            p.resource_id, p.operation_id, rp.effect, TRUE AS active,
+            rp.start_time, rp.expire_time, NULL AS team_id
+        FROM iam_user_role ur
+        JOIN iam_role_permission rp
+          ON rp.tenant_id = ur.tenant_id AND rp.role_id = ur.role_id
+        JOIN iam_permission p
+          ON p.tenant_id = rp.tenant_id AND p.id = rp.permission_id
+        WHERE ur.tenant_id = #{tenantId} AND ur.user_id = #{subjectId}
+          AND p.resource_id = #{resourceId} AND p.operation_id = #{operationId}
+          AND ur.status = 'ACTIVE' AND ur.active_slot = 1
+          AND ur.start_time &lt;= CURRENT_TIMESTAMP(3)
+          AND (ur.expire_time IS NULL OR ur.expire_time &gt; CURRENT_TIMESTAMP(3))
+          AND rp.status = 'ACTIVE' AND rp.active_slot = 1
+          AND p.status = 'ACTIVE'
+    </select>
+
+    <select id="selectTeamRoleGrants"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.AuthorizationGrantRow">
+        SELECT trp.id AS grant_id, trp.tenant_id, tmr.user_id AS subject_id,
+            p.resource_id, p.operation_id, trp.effect, TRUE AS active,
+            trp.start_time, trp.expire_time, trp.team_id
+        FROM iam_team_member_role tmr
+        JOIN iam_team_role_permission trp
+          ON trp.tenant_id = tmr.tenant_id
+         AND trp.team_id = tmr.team_id
+         AND trp.team_role_id = tmr.team_role_id
+        JOIN iam_permission p
+          ON p.tenant_id = trp.tenant_id AND p.id = trp.permission_id
+        WHERE tmr.tenant_id = #{tenantId} AND tmr.user_id = #{subjectId}
+          AND p.resource_id = #{resourceId} AND p.operation_id = #{operationId}
+          AND tmr.status = 'ACTIVE' AND tmr.active_slot = 1
+          AND tmr.start_time &lt;= CURRENT_TIMESTAMP(3)
+          AND (tmr.expire_time IS NULL OR tmr.expire_time &gt; CURRENT_TIMESTAMP(3))
+          AND trp.status = 'ACTIVE' AND trp.active_slot = 1
+          AND p.status = 'ACTIVE'
+    </select>
+
+    <insert id="insertDataScope">
+        INSERT INTO iam_data_scope (
+            id, tenant_id, scope_code, scope_name, scope_type, custom_policy_id,
+            status, delete_marker, version, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{scopeCode}, #{scopeName}, #{scopeType},
+            #{customPolicyId}, 'ACTIVE', 0, 0, #{now}, #{now})
+    </insert>
+
+    <insert id="insertFieldPolicy">
+        INSERT INTO iam_field_policy (
+            id, tenant_id, resource_id, operation_id, field_id, readable, writable,
+            hidden, mask_strategy_id, priority, status, version, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{resourceId}, #{operationId}, #{fieldId},
+            #{readable}, #{writable}, #{hidden}, #{maskStrategyId}, #{priority},
+            'ACTIVE', 0, #{now}, #{now})
+    </insert>
+
+    <insert id="upsertTenantPermissionVersion">
+        INSERT INTO iam_permission_version (
+            id, tenant_id, scope_type, subject_id, version_value, updated_reason)
+        VALUES (#{id}, #{tenantId}, 'TENANT', 0, 1, #{reason})
+        ON DUPLICATE KEY UPDATE
+            version_value = version_value + 1,
+            updated_reason = VALUES(updated_reason)
+    </insert>
+
+    <update id="revokeRolePermissions">
+        UPDATE iam_role_permission
+        SET status = 'REVOKED', active_slot = NULL, version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND role_id = #{roleId}
+          AND status = 'ACTIVE' AND active_slot = 1
+    </update>
+
+    <insert id="insertRolePermission">
+        INSERT INTO iam_role_permission (
+            id, tenant_id, role_id, permission_id, effect, priority,
+            condition_policy_id, status, active_slot, start_time, expire_time,
+            version, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{roleId}, #{permissionId}, 'ALLOW', 0,
+            NULL, 'ACTIVE', 1, #{now}, NULL, 0, #{now}, #{now})
+    </insert>
+
+    <select id="selectActiveRolePermissionIds" resultType="long">
+        SELECT permission_id
+        FROM iam_role_permission
+        WHERE tenant_id = #{tenantId} AND role_id = #{roleId}
+          AND status = 'ACTIVE' AND active_slot = 1
+        ORDER BY permission_id
+    </select>
+
+    <update id="revokeTeamRolePermissions">
+        UPDATE iam_team_role_permission
+        SET status = 'REVOKED', active_slot = NULL, version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND team_role_id = #{teamRoleId}
+          AND status = 'ACTIVE' AND active_slot = 1
+    </update>
+
+    <select id="selectTeamId" resultType="long">
+        SELECT team_id
+        FROM iam_team_role
+        WHERE tenant_id = #{tenantId} AND id = #{teamRoleId}
+          AND status = 'ACTIVE' AND delete_marker = 0
+    </select>
+
+    <insert id="insertTeamRolePermission">
+        INSERT INTO iam_team_role_permission (
+            id, tenant_id, team_id, team_role_id, permission_id, effect, priority,
+            condition_policy_id, status, active_slot, start_time, expire_time,
+            version, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{teamId}, #{teamRoleId}, #{permissionId},
+            'ALLOW', 0, NULL, 'ACTIVE', 1, #{now}, NULL, 0, #{now}, #{now})
+    </insert>
+
+    <select id="selectActiveTeamRolePermissionIds" resultType="long">
+        SELECT permission_id
+        FROM iam_team_role_permission
+        WHERE tenant_id = #{tenantId} AND team_role_id = #{teamRoleId}
+          AND status = 'ACTIVE' AND active_slot = 1
+        ORDER BY permission_id
+    </select>
+
+    <update id="disableActiveResourceFields">
+        UPDATE iam_resource_field
+        SET status = 'DISABLED', version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND resource_id = #{resourceId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <insert id="insertResourceField">
+        INSERT INTO iam_resource_field (
+            id, tenant_id, resource_id, field_code, property_path, column_name,
+            data_type, sensitive_level, system_managed, discovery_status,
+            default_mask_strategy_id, status, version, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{resourceId}, #{fieldCode}, #{propertyPath},
+            #{columnName}, #{dataType}, #{sensitiveLevel}, #{systemManaged},
+            'DECLARED', NULL, 'ACTIVE', 0, #{now}, #{now})
+    </insert>
+
+    <delete id="deleteRoleDataScopeTeams">
+        DELETE FROM iam_role_data_scope_team
+        WHERE tenant_id = #{tenantId}
+          AND role_data_scope_id IN (
+              SELECT id FROM iam_role_data_scope
+              WHERE tenant_id = #{tenantId} AND role_permission_id = #{rolePermissionId})
+    </delete>
+
+    <delete id="deleteRoleDataScopes">
+        DELETE FROM iam_role_data_scope
+        WHERE tenant_id = #{tenantId} AND role_permission_id = #{rolePermissionId}
+    </delete>
+
+    <insert id="insertRoleDataScope">
+        INSERT INTO iam_role_data_scope (
+            id, tenant_id, role_permission_id, data_scope_id, merge_mode, version, created_at)
+        VALUES (#{id}, #{tenantId}, #{rolePermissionId}, #{dataScopeId},
+            #{mergeMode}, 0, #{now})
+    </insert>
+
+    <insert id="insertRoleDataScopeTeam">
+        INSERT INTO iam_role_data_scope_team (
+            id, tenant_id, role_data_scope_id, team_id, include_children, created_at)
+        VALUES (#{id}, #{tenantId}, #{roleDataScopeId}, #{teamId},
+            #{includeChildren}, #{now})
+    </insert>
+
+    <delete id="deleteRoleFieldPolicies">
+        DELETE FROM iam_role_field_policy
+        WHERE tenant_id = #{tenantId} AND role_permission_id = #{rolePermissionId}
+    </delete>
+
+    <insert id="insertRoleFieldPolicy">
+        INSERT INTO iam_role_field_policy (
+            id, tenant_id, role_permission_id, field_policy_id, version, created_at)
+        VALUES (#{id}, #{tenantId}, #{rolePermissionId}, #{fieldPolicyId}, 0, #{now})
+    </insert>
+
+    <select id="selectRoleDataScopes"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ResolvedDataScopeRow">
+        SELECT rds.id AS binding_id, rds.role_permission_id AS permission_id,
+            ds.id AS data_scope_id, ds.scope_code, ds.scope_type,
+            ds.custom_policy_id, rds.merge_mode
+        FROM iam_role_data_scope rds
+        JOIN iam_data_scope ds
+          ON ds.tenant_id = rds.tenant_id AND ds.id = rds.data_scope_id
+        WHERE rds.tenant_id = #{tenantId}
+          AND rds.role_permission_id IN
+          <foreach collection="permissionIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND ds.status = 'ACTIVE' AND ds.delete_marker = 0
+    </select>
+
+    <select id="selectTeamRoleDataScopes"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ResolvedDataScopeRow">
+        SELECT trds.id AS binding_id, trds.team_role_permission_id AS permission_id,
+            ds.id AS data_scope_id, ds.scope_code, ds.scope_type,
+            ds.custom_policy_id, trds.merge_mode
+        FROM iam_team_role_data_scope trds
+        JOIN iam_data_scope ds
+          ON ds.tenant_id = trds.tenant_id AND ds.id = trds.data_scope_id
+        WHERE trds.tenant_id = #{tenantId}
+          AND trds.team_role_permission_id IN
+          <foreach collection="permissionIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND ds.status = 'ACTIVE' AND ds.delete_marker = 0
+    </select>
+
+    <select id="selectRoleDataScopeTeams"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ScopeTeamRow">
+        SELECT role_data_scope_id AS binding_id, team_id
+        FROM iam_role_data_scope_team
+        WHERE tenant_id = #{tenantId} AND role_data_scope_id IN
+        <foreach collection="bindingIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY role_data_scope_id, team_id
+    </select>
+
+    <select id="selectTeamRoleDataScopeTeams"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ScopeTeamRow">
+        SELECT team_role_data_scope_id AS binding_id, team_id
+        FROM iam_team_role_data_scope_team
+        WHERE tenant_id = #{tenantId} AND team_role_data_scope_id IN
+        <foreach collection="bindingIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY team_role_data_scope_id, team_id
+    </select>
+
+    <select id="selectRoleFieldPolicies"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ResolvedFieldPolicyRow">
+        SELECT rfp.role_permission_id AS permission_id, fp.field_id, fp.readable,
+            fp.writable, fp.hidden, fp.mask_strategy_id, fp.priority
+        FROM iam_role_field_policy rfp
+        JOIN iam_field_policy fp
+          ON fp.tenant_id = rfp.tenant_id AND fp.id = rfp.field_policy_id
+        WHERE rfp.tenant_id = #{tenantId} AND rfp.role_permission_id IN
+        <foreach collection="permissionIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND fp.status = 'ACTIVE'
+    </select>
+
+    <select id="selectTeamRoleFieldPolicies"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ResolvedFieldPolicyRow">
+        SELECT trfp.team_role_permission_id AS permission_id, fp.field_id, fp.readable,
+            fp.writable, fp.hidden, fp.mask_strategy_id, fp.priority
+        FROM iam_team_role_field_policy trfp
+        JOIN iam_field_policy fp
+          ON fp.tenant_id = trfp.tenant_id AND fp.id = trfp.field_policy_id
+        WHERE trfp.tenant_id = #{tenantId} AND trfp.team_role_permission_id IN
+        <foreach collection="permissionIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND fp.status = 'ACTIVE'
+    </select>
+
+    <select id="selectMaskStrategies"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.MaskStrategyRow">
+        SELECT id, strategy_type, CAST(config_json AS CHAR) AS config_json
+        FROM iam_mask_strategy
+        WHERE tenant_id = #{tenantId} AND id IN
+        <foreach collection="strategyIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND status = 'ACTIVE' AND delete_marker = 0
+        ORDER BY id
+    </select>
+</mapper>

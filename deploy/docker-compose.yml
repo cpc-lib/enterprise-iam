@@ -1,0 +1,205 @@
+# ==============================================================================
+# Enterprise IAM & Dynamic Authorization Platform
+# 基础中间件与数据基础设施 Docker Compose 编排文件
+# 包含：MySQL 8.4、Redis 7、RabbitMQ 3.13、MinIO 对象存储、Nacos 服务与配置中心
+# ==============================================================================
+
+name: enterprise-iam-infra
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. 关系型数据库 (MySQL 8.4 LTS)
+  # 自动挂载初始化脚本，一键创建 8 大微服务专用独立物理库：
+  # iam_auth, iam_identity, iam_organization, iam_authorization,
+  # iam_sharing, iam_file, iam_audit, iam_job
+  # ----------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.4
+    container_name: iam-mysql
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST:-%}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --lower-case-table-names=1
+      - --max-connections=500
+    volumes:
+      - ./mysql/conf/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD:-root} || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    networks:
+      - iam-network
+
+  # ----------------------------------------------------------------------------
+  # 2. 高性能内存存储与会话投影缓存 (Redis 7)
+  # 用于 Gateway Access Token 投影、Redis 单调递增会话版本围栏、幂等分布式锁
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: iam-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - iam-network
+
+  # ----------------------------------------------------------------------------
+  # 3. 消息队列服务 (RabbitMQ 3.13 with Management Web UI)
+  # 用于领域事件广播、事务性 Outbox 事件中继 (Relay)、审计与共享日志异步投递
+  # ----------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: iam-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - iam-network
+
+  # ----------------------------------------------------------------------------
+  # 4. S3 兼容对象存储 (MinIO Object Storage)
+  # 用于文件服务分块直传、秒传去重与审计日志 Parquet 冷归档存储
+  # ----------------------------------------------------------------------------
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-04-22T22-12-26Z}
+    container_name: iam-minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - iam-network
+
+  # ----------------------------------------------------------------------------
+  # 4.1 MinIO 存储桶自动创建助手 (初始化任务容器)
+  # 复用 MinIO 镜像自带的 /usr/bin/mc 客户端，避免拉取 Docker Hub/Quay.io 已受限的 minio/mc
+  # 启动后自动检测 MinIO 就绪状态，自动创建专用存储桶：
+  # iam-files (文件服务), iam-audit-cold-archive (冷审计归档)
+  # ----------------------------------------------------------------------------
+  minio-init:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-04-22T22-12-26Z}
+    container_name: iam-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}) do echo '...waiting for MinIO API...' && sleep 1; done;
+      /usr/bin/mc mb --ignore-existing myminio/iam-files;
+      /usr/bin/mc mb --ignore-existing myminio/iam-audit-cold-archive;
+      echo 'MinIO buckets [iam-files, iam-audit-cold-archive] verified and ready';
+      exit 0;
+      "
+    networks:
+      - iam-network
+
+  # ----------------------------------------------------------------------------
+  # 5. 动态配置与服务注册中心 (Nacos 2.3 Standalone)
+  # 支撑微服务动态配置拉取与单机独立服务发现
+  # ----------------------------------------------------------------------------
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: iam-nacos
+    restart: unless-stopped
+    ports:
+      - "${NACOS_PORT:-8848}:8848"
+      - "${NACOS_GRPC_PORT:-9848}:9848"
+    environment:
+      MODE: standalone
+      PREFER_HOST_MODE: hostname
+      NACOS_AUTH_ENABLE: "false"
+      JVM_XMS: ${NACOS_JVM_XMS:-256m}
+      JVM_XMX: ${NACOS_JVM_XMX:-512m}
+    volumes:
+      - nacos_data:/home/nacos/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8848/nacos/v1/console/health/readiness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    networks:
+      - iam-network
+
+  # ----------------------------------------------------------------------------
+  # 6. 分布式事务协调器 (Seata Server 1.7)
+  # 支撑微服务跨库事务协调与 AT 模式全局一致性
+  # ----------------------------------------------------------------------------
+  seata-server:
+    image: seataio/seata-server:1.7.0
+    container_name: iam-seata-server
+    restart: unless-stopped
+    ports:
+      - "${SEATA_PORT:-8091}:8091"
+      - "${SEATA_CONSOLE_PORT:-7091}:7091"
+    environment:
+      SEATA_IP: seata-server
+      SEATA_PORT: 8091
+      STORE_MODE: file
+    networks:
+      - iam-network
+
+# ------------------------------------------------------------------------------
+# 桥接网络与持久化卷
+# ------------------------------------------------------------------------------
+networks:
+  iam-network:
+    name: iam-network
+    driver: bridge
+
+volumes:
+  mysql_data:
+    name: iam_mysql_data
+  redis_data:
+    name: iam_redis_data
+  rabbitmq_data:
+    name: iam_rabbitmq_data
+  minio_data:
+    name: iam_minio_data
+  nacos_data:
+    name: iam_nacos_data

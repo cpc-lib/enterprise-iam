@@ -4,7 +4,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.core.Ordered;
 
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @ConfigurationProperties("iam.security.delegation")
@@ -21,7 +23,10 @@ public final class IamDelegationSecurityProperties {
     private Duration unknownKeyTtl = Duration.ofSeconds(30);
     private Duration unknownKeyRefreshMinimumInterval = Duration.ofSeconds(5);
     private List<String> protectedPaths = List.of("/internal/**");
-    private int filterOrder = Ordered.HIGHEST_PRECEDENCE + 1_000;
+    private int filterOrder = Ordered.HIGHEST_PRECEDENCE + 20;
+    private String jwksUri;
+    private Set<String> jwksAllowedHosts = new LinkedHashSet<>();
+    private boolean jwksAllowHttp;
 
     public void validateEnabledConfiguration() {
         if (!enabled) {
@@ -145,5 +150,58 @@ public final class IamDelegationSecurityProperties {
 
     public void setFilterOrder(int filterOrder) {
         this.filterOrder = filterOrder;
+    }
+
+    public String getJwksUri() {
+        return jwksUri;
+    }
+
+    public void setJwksUri(String jwksUri) {
+        this.jwksUri = jwksUri;
+    }
+
+    public Set<String> getJwksAllowedHosts() {
+        return jwksAllowedHosts == null ? Set.of() : Set.copyOf(jwksAllowedHosts);
+    }
+
+    public void setJwksAllowedHosts(Set<String> jwksAllowedHosts) {
+        this.jwksAllowedHosts = jwksAllowedHosts == null
+                ? new LinkedHashSet<>()
+                : new LinkedHashSet<>(jwksAllowedHosts);
+    }
+
+    /** DEV-ONLY: permits a plain-HTTP delegation JWKS endpoint (docker compose / localhost). */
+    public boolean isJwksAllowHttp() {
+        return jwksAllowHttp;
+    }
+
+    public void setJwksAllowHttp(boolean jwksAllowHttp) {
+        this.jwksAllowHttp = jwksAllowHttp;
+    }
+
+    /** Fail-fast validation for the auto-configured {@code HttpDelegationJwkSetLoader}. */
+    public void validateJwksConfiguration() {
+        if (jwksUri == null || jwksUri.isBlank()) {
+            throw new IllegalStateException(
+                    "iam.security.delegation.jwks-uri is required when no DelegationJwkSetLoader bean is "
+                            + "provided (env IAM_DELEGATION_JWKS_URI)");
+        }
+        if (jwksAllowedHosts == null || jwksAllowedHosts.isEmpty()) {
+            throw new IllegalStateException(
+                    "iam.security.delegation.jwks-allowed-hosts is required (env "
+                            + "IAM_DELEGATION_JWKS_ALLOWED_HOSTS)");
+        }
+        String scheme = java.net.URI.create(jwksUri.trim()).getScheme();
+        boolean http = "http".equalsIgnoreCase(scheme);
+        boolean https = "https".equalsIgnoreCase(scheme);
+        if (!http && !https) {
+            throw new IllegalStateException(
+                    "iam.security.delegation.jwks-uri must use http or https");
+        }
+        if (http && !jwksAllowHttp) {
+            throw new IllegalStateException(
+                    "iam.security.delegation.jwks-uri uses plain http but "
+                            + "iam.security.delegation.jwks-allow-http is false (plain http is DEV-ONLY)");
+        }
     }
 }

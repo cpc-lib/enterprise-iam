@@ -73,8 +73,6 @@ public final class AuthenticateLoginUseCase {
 
             ResolvedLoginIdentity resolved = identity.orElseThrow();
             var session = sessionIssuer.issue(resolved, command.requestId());
-            attemptSink.record(new AuthenticationAttempt(
-                    true, resolved.tenantId(), resolved.userId(), null, command.requestId()));
             return LoginResult.authenticated(session);
         } finally {
             Arrays.fill(rawPassword, '\0');

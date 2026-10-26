@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.authorization.infrastructure.persistence.mapper.ShareAclProjectionMapper">
+
+    <select id="selectActiveGrants"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ShareGrantRow">
+        SELECT p.share_id, p.resource_instance_key, p.target_type, p.target_id,
+            p.start_time, p.expire_time, p.projection_epoch, NULL AS team_id,
+            p.scope_type, p.folder_path, p.collection_resource_ids_json
+        FROM iam_share_acl_projection p
+        WHERE p.tenant_id = #{tenantId} AND p.resource_id = #{resourceId}
+          AND (
+              p.resource_instance_key = #{resourceInstanceKey}
+              OR p.scope_type IN ('FOLDER_INHERITED', 'COLLECTION')
+          )
+          AND p.operation_id = #{operationId} AND p.status = 'ACTIVE'
+          AND p.start_time &lt;= #{evaluatedAt} AND p.expire_time &gt; #{evaluatedAt}
+          AND (
+              (p.target_type = 'USER' AND p.target_id = #{subjectUserId})
+              <if test="teamIds != null and !teamIds.isEmpty()">
+                  OR (p.target_type = 'TEAM' AND p.target_id IN
+                  <foreach collection="teamIds" item="id" open="(" separator="," close=")">#{id}</foreach>)
+              </if>
+              OR (p.target_type = 'ROLE' AND EXISTS (
+                  SELECT 1 FROM iam_user_role ur
+                  WHERE ur.tenant_id = #{tenantId}
+                    AND ur.user_id = #{subjectUserId}
+                    AND ur.role_id = p.target_id
+                    AND ur.status = 'ACTIVE'
+                    AND ur.active_slot = 1
+                    AND ur.start_time &lt;= #{evaluatedAt}
+                    AND (ur.expire_time IS NULL OR ur.expire_time &gt; #{evaluatedAt})
+              ))
+          )
+        <if test="teamIds != null and !teamIds.isEmpty()">
+        UNION ALL
+        SELECT p.share_id, p.resource_instance_key, p.target_type, p.target_id,
+            p.start_time, p.expire_time, p.projection_epoch, tmr.team_id,
+            p.scope_type, p.folder_path, p.collection_resource_ids_json
+        FROM iam_share_acl_projection p
+        JOIN iam_team_member_role tmr
+          ON tmr.tenant_id = p.tenant_id
+         AND tmr.team_role_id = p.target_id
+         AND tmr.user_id = #{subjectUserId}
+         AND tmr.team_id IN
+         <foreach collection="teamIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+         AND tmr.status = 'ACTIVE'
+         AND tmr.active_slot = 1
+         AND tmr.start_time &lt;= #{evaluatedAt}
+         AND (tmr.expire_time IS NULL OR tmr.expire_time &gt; #{evaluatedAt})
+        WHERE p.tenant_id = #{tenantId} AND p.resource_id = #{resourceId}
+          AND (
+              p.resource_instance_key = #{resourceInstanceKey}
+              OR p.scope_type IN ('FOLDER_INHERITED', 'COLLECTION')
+          )
+          AND p.operation_id = #{operationId} AND p.status = 'ACTIVE'
+          AND p.start_time &lt;= #{evaluatedAt} AND p.expire_time &gt; #{evaluatedAt}
+          AND p.target_type = 'TEAM_ROLE'
+        </if>
+        ORDER BY share_id
+    </select>
+
+    <select id="selectFieldGrants"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ShareFieldGrantRow">
+        SELECT share_id, field_id, readable, writable, hidden, mask_strategy_id
+        FROM iam_share_field_grant_projection
+        WHERE tenant_id = #{tenantId} AND operation_id = #{operationId} AND share_id IN
+        <foreach collection="shareIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY share_id, field_id
+    </select>
+
+    <select id="selectEpoch"
+            resultType="com.enterprise.iam.authorization.infrastructure.persistence.row.ShareEpochRow">
+        SELECT expected_epoch, applied_epoch
+        FROM iam_share_security_epoch
+        WHERE tenant_id = #{tenantId} AND resource_id = #{resourceId}
+    </select>
+
+    <insert id="upsertGranted">
+        INSERT INTO iam_share_acl_projection (
+            id, tenant_id, share_id, resource_id, resource_instance_key,
+            target_type, target_id, operation_id, start_time, expire_time,
+            status, projection_epoch, scope_type, folder_path,
+            collection_resource_ids_json, version, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{shareId}, #{resourceId}, #{resourceInstanceKey},
+            #{targetType}, #{targetId}, #{operationId}, #{startTime}, #{expireTime},
+            'ACTIVE', #{projectionEpoch}, #{scopeType}, #{folderPath},
+            #{collectionResourceIdsJson}, 0, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            resource_id = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(resource_id), resource_id),
+            resource_instance_key = IF(VALUES(projection_epoch) &gt; projection_epoch,
+                VALUES(resource_instance_key), resource_instance_key),
+            start_time = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(start_time), start_time),
+            expire_time = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(expire_time), expire_time),
+            scope_type = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(scope_type), scope_type),
+            folder_path = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(folder_path), folder_path),
+            collection_resource_ids_json = IF(VALUES(projection_epoch) &gt; projection_epoch,
+                VALUES(collection_resource_ids_json), collection_resource_ids_json),
+            status = IF(VALUES(projection_epoch) &gt; projection_epoch, 'ACTIVE', status),
+            version = IF(VALUES(projection_epoch) &gt; projection_epoch, version + 1, version),
+            updated_at = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(updated_at), updated_at),
+            projection_epoch = GREATEST(projection_epoch, VALUES(projection_epoch))
+    </insert>
+
+    <update id="revoke">
+        UPDATE iam_share_acl_projection
+        SET status = 'REVOKED', projection_epoch = #{epoch},
+            version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND share_id = #{shareId}
+          AND target_type = #{targetType} AND target_id = #{targetId}
+          AND operation_id IN
+          <foreach collection="operationIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND projection_epoch &lt; #{epoch}
+    </update>
+
+    <delete id="deleteFieldGrantsBeforeEpoch">
+        DELETE FROM iam_share_field_grant_projection
+        WHERE tenant_id = #{tenantId} AND share_id = #{shareId}
+          AND projection_epoch &lt; #{epoch}
+    </delete>
+
+    <insert id="upsertFieldGrant">
+        INSERT INTO iam_share_field_grant_projection (
+            id, tenant_id, share_id, operation_id, field_id, readable, writable,
+            hidden, mask_strategy_id, projection_epoch, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{shareId}, #{operationId}, #{fieldId},
+            #{readable}, #{writable}, #{hidden}, #{maskStrategyId},
+            #{projectionEpoch}, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            readable = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(readable), readable),
+            writable = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(writable), writable),
+            hidden = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(hidden), hidden),
+            mask_strategy_id = IF(VALUES(projection_epoch) &gt; projection_epoch,
+                VALUES(mask_strategy_id), mask_strategy_id),
+            updated_at = IF(VALUES(projection_epoch) &gt; projection_epoch, VALUES(updated_at), updated_at),
+            projection_epoch = GREATEST(projection_epoch, VALUES(projection_epoch))
+    </insert>
+
+    <insert id="advanceExpectedEpoch">
+        INSERT INTO iam_share_security_epoch (
+            tenant_id, resource_id, expected_epoch, applied_epoch, updated_at)
+        VALUES (#{tenantId}, #{resourceId}, #{epoch}, 0, #{now})
+        ON DUPLICATE KEY UPDATE
+            expected_epoch = GREATEST(expected_epoch, VALUES(expected_epoch)),
+            updated_at = VALUES(updated_at)
+    </insert>
+
+    <insert id="advanceAppliedEpoch">
+        INSERT INTO iam_share_security_epoch (
+            tenant_id, resource_id, expected_epoch, applied_epoch, updated_at)
+        VALUES (#{tenantId}, #{resourceId}, #{epoch}, #{epoch}, #{now})
+        ON DUPLICATE KEY UPDATE
+            applied_epoch = GREATEST(applied_epoch, VALUES(applied_epoch)),
+            updated_at = VALUES(updated_at)
+    </insert>
+</mapper>

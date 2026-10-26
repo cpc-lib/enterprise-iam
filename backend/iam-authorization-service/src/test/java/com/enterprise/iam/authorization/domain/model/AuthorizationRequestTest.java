@@ -54,6 +54,26 @@ class AuthorizationRequestTest {
                 .hasMessageContaining("32");
     }
 
+    @Test
+    void normalizesTeamIdsListFromContext() {
+        AuthorizationRequest request = request(
+                Map.of("teamIds", java.util.List.of(7, "8", 7, "9")));
+
+        assertThat(TeamIds.from(request.context())).containsExactly(7L, 8L, 9L);
+    }
+
+    @Test
+    void rejectsNonPositiveTeamIds() {
+        assertThatThrownBy(() -> request(Map.of("teamIds", java.util.List.of(1, -2))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("teamIds");
+    }
+
+    @Test
+    void absentTeamIdsNormalizeToEmpty() {
+        assertThat(TeamIds.from(request(Map.of("network", "CORPORATE")).context())).isEmpty();
+    }
+
     private AuthorizationRequest request(Map<String, Object> context) {
         return new AuthorizationRequest(1, 2, 3, 4, 5, null, 1, "request-1", context);
     }

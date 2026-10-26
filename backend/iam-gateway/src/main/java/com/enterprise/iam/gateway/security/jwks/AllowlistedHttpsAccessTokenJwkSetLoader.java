@@ -225,7 +225,7 @@ public final class AllowlistedHttpsAccessTokenJwkSetLoader
         return Byte.toUnsignedInt(value);
     }
 
-    private static void requireResponseMetadata(JwksHttpResponse response) {
+    static void requireResponseMetadata(JwksHttpResponse response) {
         if (response.statusCode() != 200) {
             throw new JwksTransportException("JWKS response status is not 200");
         }
@@ -261,7 +261,7 @@ public final class AllowlistedHttpsAccessTokenJwkSetLoader
         }
     }
 
-    private static byte[] readBounded(JwksHttpResponse response) {
+    static byte[] readBounded(JwksHttpResponse response) {
         try {
             byte[] bytes = response.body().readNBytes(MAX_BYTES + 1);
             if (bytes.length > MAX_BYTES) {
@@ -273,7 +273,7 @@ public final class AllowlistedHttpsAccessTokenJwkSetLoader
         }
     }
 
-    private static String decodeStrictUtf8(byte[] bytes) {
+    static String decodeStrictUtf8(byte[] bytes) {
         try {
             return StandardCharsets.UTF_8.newDecoder()
                     .onMalformedInput(CodingErrorAction.REPORT)

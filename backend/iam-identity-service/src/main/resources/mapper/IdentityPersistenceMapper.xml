@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper">
+
+    <resultMap id="tenantResultMap" type="com.enterprise.iam.identity.domain.model.Tenant">
+        <constructor>
+            <idArg column="id" javaType="_long"/>
+            <arg column="tenant_code" javaType="string"/>
+            <arg column="tenant_name" javaType="string"/>
+            <arg column="status" javaType="com.enterprise.iam.identity.domain.model.TenantStatus"/>
+            <arg column="version" javaType="_long"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="userResultMap" type="com.enterprise.iam.identity.domain.model.User">
+        <constructor>
+            <idArg column="id" javaType="_long"/>
+            <arg column="tenant_id" javaType="_long"/>
+            <arg column="username" javaType="string"/>
+            <arg column="display_name" javaType="string"/>
+            <arg column="email" javaType="string"/>
+            <arg column="phone" javaType="string"/>
+            <arg column="department_id" javaType="java.lang.Long"/>
+            <arg column="position_id" javaType="java.lang.Long"/>
+            <arg column="status" javaType="com.enterprise.iam.identity.domain.model.UserStatus"/>
+            <arg column="version" javaType="_long"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="roleResultMap" type="com.enterprise.iam.identity.domain.model.Role">
+        <constructor>
+            <idArg column="id" javaType="_long"/>
+            <arg column="tenant_id" javaType="_long"/>
+            <arg column="role_code" javaType="string"/>
+            <arg column="role_name" javaType="string"/>
+            <arg column="description" javaType="string"/>
+            <arg column="priority" javaType="_int"/>
+            <arg column="status" javaType="com.enterprise.iam.identity.domain.model.RoleStatus"/>
+            <arg column="version" javaType="_long"/>
+            <arg column="created_at" javaType="java.time.Instant"/>
+            <arg column="updated_at" javaType="java.time.Instant"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="userRoleResultMap" type="com.enterprise.iam.identity.domain.model.UserRole">
+        <constructor>
+            <idArg column="id" javaType="_long"/>
+            <arg column="tenant_id" javaType="_long"/>
+            <arg column="user_id" javaType="_long"/>
+            <arg column="role_id" javaType="_long"/>
+            <arg column="status" javaType="com.enterprise.iam.identity.domain.model.UserRole$Status"/>
+            <arg column="start_time" javaType="java.time.Instant"/>
+            <arg column="expire_time" javaType="java.time.Instant"/>
+            <arg column="version" javaType="_long"/>
+        </constructor>
+    </resultMap>
+
+    <insert id="insertTenant">
+        INSERT INTO iam_tenant (id, tenant_code, tenant_name, status, version, created_at, updated_at)
+        VALUES (#{id}, #{tenantCode}, #{tenantName}, #{status}, #{version}, #{now}, #{now})
+    </insert>
+
+    <select id="selectTenantById" resultMap="tenantResultMap">
+        SELECT id, tenant_code, tenant_name, status, version, created_at, updated_at
+        FROM iam_tenant
+        WHERE id = #{tenantId} AND delete_marker = 0
+    </select>
+
+    <select id="selectTenantByCode" resultMap="tenantResultMap">
+        SELECT id, tenant_code, tenant_name, status, version, created_at, updated_at
+        FROM iam_tenant
+        WHERE tenant_code = #{tenantCode} AND delete_marker = 0
+    </select>
+
+    <select id="selectTenants" resultMap="tenantResultMap">
+        SELECT id, tenant_code, tenant_name, status, version, created_at, updated_at
+        FROM iam_tenant
+        WHERE delete_marker = 0
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (tenant_code LIKE CONCAT('%', #{keyword}, '%') OR tenant_name LIKE CONCAT('%', #{keyword}, '%') OR CAST(id AS CHAR) LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY id ASC
+    </select>
+
+    <update id="updateTenantStatus">
+        UPDATE iam_tenant
+        SET status = #{status}, version = version + 1, updated_at = #{now}
+        WHERE id = #{tenantId}
+        <if test="expectedVersion != null">
+            AND version = #{expectedVersion}
+        </if>
+        AND delete_marker = 0
+    </update>
+
+    <update id="updateTenantName">
+        UPDATE iam_tenant
+        SET tenant_name = #{tenantName}, version = version + 1, updated_at = #{now}
+        WHERE id = #{tenantId}
+        <if test="expectedVersion != null">
+            AND version = #{expectedVersion}
+        </if>
+        AND delete_marker = 0
+    </update>
+
+    <insert id="insertUser">
+        INSERT INTO iam_user
+            (id, tenant_id, username, display_name, email, phone, department_id, position_id, status, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{tenantId}, #{username}, #{displayName}, #{email}, #{phone}, #{departmentId}, #{positionId}, #{status}, #{version}, #{now}, #{now})
+    </insert>
+
+    <select id="selectUserById" resultMap="userResultMap">
+        SELECT id, tenant_id, username, display_name, email, phone, department_id, position_id, status, version, created_at, updated_at
+        FROM iam_user
+        WHERE tenant_id = #{tenantId} AND id = #{userId} AND delete_marker = 0
+    </select>
+
+    <select id="selectTenantIdByUserId" resultType="java.lang.Long">
+        SELECT tenant_id
+        FROM iam_user
+        WHERE id = #{userId}
+          AND delete_marker = 0
+        LIMIT 1
+    </select>
+
+    <select id="listUsers" resultMap="userResultMap">
+        SELECT id, tenant_id, username, display_name, email, phone, department_id, position_id, status, version, created_at, updated_at
+        FROM iam_user
+        <where>
+            <if test="tenantId != null and tenantId &gt; 0">
+                tenant_id = #{tenantId}
+            </if>
+            AND delete_marker = 0
+            <if test="departmentId != null">
+                AND department_id = #{departmentId}
+            </if>
+            <if test="positionId != null">
+                AND position_id = #{positionId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%') OR display_name LIKE CONCAT('%', #{keyword}, '%') OR email LIKE CONCAT('%', #{keyword}, '%') OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM iam_user
+        <where>
+            <if test="tenantId != null and tenantId &gt; 0">
+                tenant_id = #{tenantId}
+            </if>
+            AND delete_marker = 0
+            <if test="departmentId != null">
+                AND department_id = #{departmentId}
+            </if>
+            <if test="positionId != null">
+                AND position_id = #{positionId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%') OR display_name LIKE CONCAT('%', #{keyword}, '%') OR email LIKE CONCAT('%', #{keyword}, '%') OR phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <update id="updateUser">
+        UPDATE iam_user
+        SET display_name = #{displayName},
+            email = #{email},
+            phone = #{phone},
+            department_id = #{departmentId},
+            position_id = #{positionId},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{userId} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="updateUserStatus">
+        UPDATE iam_user
+        SET status = #{status}, version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{userId}
+          AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="revokeAllUserSessions">
+        UPDATE iam_auth.iam_login_session
+        SET status = 'REVOKED', session_version = session_version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND status = 'ACTIVE'
+    </update>
+
+    <update id="revokeAllUserRefreshTokens">
+        UPDATE iam_auth.iam_refresh_token
+        SET status = 'REVOKED', updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND status = 'ACTIVE'
+    </update>
+
+    <update id="revokeAllTenantSessions">
+        UPDATE iam_auth.iam_login_session
+        SET status = 'REVOKED', session_version = session_version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND status = 'ACTIVE'
+    </update>
+
+    <update id="revokeAllTenantRefreshTokens">
+        UPDATE iam_auth.iam_refresh_token
+        SET status = 'REVOKED', updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND status = 'ACTIVE'
+    </update>
+
+    <select id="selectMinUserIdByTenantId" resultType="java.lang.Long">
+        SELECT MIN(id)
+        FROM iam_user
+        WHERE tenant_id = #{tenantId}
+          AND delete_marker = 0
+    </select>
+
+    <select id="countTenantAdminRolesByUser" resultType="int">
+        SELECT COUNT(1)
+        FROM iam_user_role ur
+        JOIN iam_role r ON r.id = ur.role_id
+        WHERE ur.tenant_id = #{tenantId}
+          AND ur.user_id = #{userId}
+          AND ur.status = 'ACTIVE'
+          AND ur.active_slot = 1
+          AND r.role_code = 'TENANT_ADMIN'
+    </select>
+
+    <insert id="upsertPasswordCredential">
+        INSERT INTO iam_auth.iam_password_credential
+            (id, tenant_id, user_id, password_phc, password_version, status, changed_at, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{tenantId}, #{userId}, #{passwordPhc}, 1, 'ACTIVE', #{now}, 0, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            password_phc = #{passwordPhc},
+            password_version = password_version + 1,
+            status = 'ACTIVE',
+            changed_at = #{now},
+            version = version + 1,
+            updated_at = #{now}
+    </insert>
+
+    <insert id="upsertUserSecurityState">
+        INSERT INTO iam_auth.iam_user_security_state
+            (id, tenant_id, user_id, token_version, password_version, login_failure_count, failure_window_start_at, lock_until, last_password_change_at, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{tenantId}, #{userId}, 1, 1, 0, NULL, NULL, #{now}, 0, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            token_version = token_version + 1,
+            password_version = password_version + 1,
+            login_failure_count = 0,
+            failure_window_start_at = NULL,
+            lock_until = NULL,
+            last_password_change_at = #{now},
+            version = version + 1,
+            updated_at = #{now}
+    </insert>
+
+    <insert id="insertUserIdentity">
+        INSERT INTO iam_user_identity
+            (id, tenant_id, user_id, identity_type, identity_key, credential_ref, status, delete_marker, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{tenantId}, #{userId}, #{identityType}, #{identityKey}, #{credentialRef}, #{status}, 0, 0, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            status = #{status},
+            credential_ref = #{credentialRef},
+            updated_at = #{now}
+    </insert>
+
+    <insert id="insertRole">
+        INSERT INTO iam_role
+            (id, tenant_id, role_code, role_name, description, priority, status, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{tenantId}, #{roleCode}, #{roleName}, #{description}, #{priority}, #{status}, #{version}, #{now}, #{now})
+    </insert>
+
+    <select id="selectRoleById" resultMap="roleResultMap">
+        SELECT id, tenant_id, role_code, role_name, description, priority, status, version, created_at, updated_at
+        FROM iam_role
+        <where>
+            <if test="tenantId != null and tenantId != 10001">
+                tenant_id = #{tenantId}
+            </if>
+            AND id = #{roleId} AND delete_marker = 0
+        </where>
+    </select>
+
+    <update id="updateRoleStatus">
+        UPDATE iam_role
+        SET status = #{status},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE id = #{roleId}
+          AND delete_marker = 0
+          <if test="tenantId != null and tenantId != 10001">
+              AND tenant_id = #{tenantId}
+          </if>
+          <if test="expectedVersion != null">
+              AND version = #{expectedVersion}
+          </if>
+    </update>
+
+    <update id="softDeleteRole">
+        UPDATE iam_role
+        SET delete_marker = id,
+            version = version + 1,
+            updated_at = #{now}
+        WHERE id = #{roleId}
+          AND delete_marker = 0
+          <if test="tenantId != null and tenantId != 10001">
+              AND tenant_id = #{tenantId}
+          </if>
+          <if test="expectedVersion != null">
+              AND version = #{expectedVersion}
+          </if>
+    </update>
+
+    <update id="revokeUserRolesByRoleId">
+        UPDATE iam_user_role
+        SET status = 'REVOKED',
+            active_slot = 0,
+            version = version + 1,
+            updated_at = #{now}
+        WHERE role_id = #{roleId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <select id="selectRoleByCode" resultMap="roleResultMap">
+        SELECT id, tenant_id, role_code, role_name, description, priority, status, version, created_at, updated_at
+        FROM iam_role
+        WHERE tenant_id = #{tenantId} AND role_code = #{roleCode} AND delete_marker = 0
+    </select>
+
+    <select id="selectRoles" resultMap="roleResultMap">
+        SELECT DISTINCT r.id, r.tenant_id, r.role_code, r.role_name, r.description, r.priority, r.status, r.version, r.created_at, r.updated_at
+        FROM iam_role r
+        <if test="userId != null and userId &gt; 0">
+            LEFT JOIN iam_user_role ur ON ur.role_id = r.id
+                <if test="tenantId != null and tenantId &gt; 0">
+                    AND ur.tenant_id = #{tenantId}
+                </if>
+                AND ur.user_id = #{userId}
+                AND ur.status = 'ACTIVE'
+                AND ur.active_slot = 1
+        </if>
+        <where>
+            <choose>
+                <when test="userId != null and userId &gt; 0 and tenantId != null and tenantId &gt; 0">
+                    (r.tenant_id = #{tenantId} OR ur.id IS NOT NULL)
+                </when>
+                <when test="tenantId != null and tenantId &gt; 0 and tenantId != 10001 and tenantId != 20001">
+                    (r.tenant_id = #{tenantId} OR r.tenant_id = 10001 OR r.tenant_id = 20001)
+                </when>
+                <when test="tenantId != null and tenantId &gt; 0">
+                    (r.tenant_id = #{tenantId} OR r.tenant_id = 20001)
+                </when>
+            </choose>
+            AND r.delete_marker = 0
+        </where>
+        ORDER BY r.priority DESC, r.id ASC
+    </select>
+
+    <select id="selectRolesByUserId" resultMap="roleResultMap">
+        SELECT r.id, r.tenant_id, r.role_code, r.role_name, r.description, r.priority, r.status, r.version, r.created_at, r.updated_at
+        FROM iam_role r
+        JOIN iam_user_role ur ON ur.role_id = r.id
+        WHERE ur.user_id = #{userId}
+          AND ur.status = 'ACTIVE'
+          AND ur.active_slot = 1
+          AND r.delete_marker = 0
+          <if test="tenantId != null and tenantId &gt; 0">
+              AND ur.tenant_id = #{tenantId}
+          </if>
+        ORDER BY r.priority DESC, r.id ASC
+    </select>
+
+    <select id="selectTenantIdByRoleId" resultType="java.lang.Long">
+        SELECT tenant_id
+        FROM iam_role
+        WHERE id = #{roleId}
+          AND delete_marker = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectRoleMenuIds" resultType="java.lang.Long">
+        SELECT menu_id
+        FROM iam_role_menu
+        WHERE role_id = #{roleId}
+        ORDER BY menu_id ASC
+    </select>
+
+    <delete id="deleteRoleMenus">
+        DELETE FROM iam_role_menu
+        WHERE role_id = #{roleId}
+    </delete>
+
+    <insert id="insertRoleMenu">
+        INSERT INTO iam_role_menu (
+            id,
+            tenant_id,
+            role_id,
+            menu_id,
+            created_at
+        ) VALUES (
+            #{id},
+            #{tenantId},
+            #{roleId},
+            #{menuId},
+            #{now}
+        )
+    </insert>
+
+    <insert id="insertUserRole">
+        INSERT INTO iam_user_role
+            (id, tenant_id, user_id, role_id, status, active_slot, start_time, expire_time, version, created_at, updated_at)
+        VALUES
+            (#{id}, #{tenantId}, #{userId}, #{roleId}, 'ACTIVE', 1, #{startTime}, #{expireTime}, 0, #{now}, #{now})
+    </insert>
+
+    <select id="selectActiveUserRole" resultMap="userRoleResultMap">
+        SELECT id, tenant_id, user_id, role_id, status, start_time, expire_time, version
+        FROM iam_user_role
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND role_id = #{roleId}
+          AND status = 'ACTIVE' AND active_slot = 1
+    </select>
+
+    <select id="selectActiveUserRolesByUser" resultMap="userRoleResultMap">
+        SELECT id, tenant_id, user_id, role_id, status, start_time, expire_time, version
+        FROM iam_user_role
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId}
+          AND status = 'ACTIVE' AND active_slot = 1
+    </select>
+
+    <select id="selectUsersByRoleId" resultMap="userResultMap">
+        SELECT 
+            u.id, 
+            u.tenant_id, 
+            u.username, 
+            u.display_name, 
+            u.email, 
+            u.phone, 
+            u.department_id, 
+            u.position_id, 
+            u.status, 
+            u.version, 
+            u.created_at, 
+            u.updated_at
+        FROM iam_user u
+        JOIN iam_user_role ur ON ur.user_id = u.id AND ur.tenant_id = u.tenant_id
+        WHERE ur.role_id = #{roleId}
+          AND ur.status = 'ACTIVE'
+          AND ur.active_slot = 1
+          AND u.delete_marker = 0
+          <if test="tenantId != null and tenantId &gt; 0">
+              AND u.tenant_id = #{tenantId}
+          </if>
+        ORDER BY ur.created_at DESC
+    </select>
+
+    <update id="revokeUserRole">
+        UPDATE iam_user_role
+        SET status = 'REVOKED', active_slot = NULL, version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND user_id = #{userId} AND role_id = #{roleId}
+          AND status = 'ACTIVE' AND active_slot = 1
+    </update>
+
+    <insert id="insertSodPolicy">
+        INSERT INTO iam_sod_policy (
+            id, tenant_id, policy_code, policy_name, description,
+            conflicting_role_ids_json, max_allowed_roles, enforcement_mode,
+            severity, status, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{policyCode}, #{policyName}, #{description},
+            #{conflictingRoleIdsJson}, #{maxAllowedRoles}, #{enforcementMode},
+            #{severity}, #{status}, #{version}, #{now}, #{now})
+    </insert>
+
+    <select id="selectSodPoliciesByTenant"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$SodPolicyRow">
+        SELECT id, tenant_id, policy_code, policy_name, description,
+               conflicting_role_ids_json, max_allowed_roles, enforcement_mode,
+               severity, status, version, created_at, updated_at
+        FROM iam_sod_policy
+        WHERE tenant_id = #{tenantId}
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="selectSodPolicyById"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$SodPolicyRow">
+        SELECT id, tenant_id, policy_code, policy_name, description,
+               conflicting_role_ids_json, max_allowed_roles, enforcement_mode,
+               severity, status, version, created_at, updated_at
+        FROM iam_sod_policy
+        WHERE tenant_id = #{tenantId} AND id = #{id}
+        LIMIT 1
+    </select>
+
+    <update id="updateSodPolicyStatus">
+        UPDATE iam_sod_policy
+        SET status = #{status}, version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id}
+    </update>
+
+    <insert id="insertPermissionApprovalRequest">
+        INSERT INTO iam_permission_approval_request (
+            id, tenant_id, applicant_user_id, request_type, target_id,
+            target_name, justification, duration_hours, status,
+            approver_user_id, decision_comment, decided_at, version, created_at)
+        VALUES (
+            #{id}, #{tenantId}, #{applicantUserId}, #{requestType}, #{targetId},
+            #{targetName}, #{justification}, #{durationHours}, #{status},
+            NULL, NULL, NULL, #{version}, #{createdAt})
+    </insert>
+
+    <select id="selectPermissionApprovalById"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$PermissionApprovalRow">
+        SELECT id, tenant_id, applicant_user_id, request_type, target_id,
+               target_name, justification, duration_hours, status,
+               approver_user_id, decision_comment, decided_at, version, created_at
+        FROM iam_permission_approval_request
+        WHERE tenant_id = #{tenantId} AND id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectPermissionApprovalsByTenant"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$PermissionApprovalRow">
+        SELECT id, tenant_id, applicant_user_id, request_type, target_id,
+               target_name, justification, duration_hours, status,
+               approver_user_id, decision_comment, decided_at, version, created_at
+        FROM iam_permission_approval_request
+        WHERE tenant_id = #{tenantId}
+        <if test="status != null and status != ''">
+          AND status = #{status}
+        </if>
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <update id="updatePermissionApprovalDecision">
+        UPDATE iam_permission_approval_request
+        SET status = #{status},
+            approver_user_id = #{approverUserId},
+            decision_comment = #{decisionComment},
+            decided_at = #{decidedAt},
+            version = version + 1
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND status = 'PENDING'
+    </update>
+
+    <select id="findTeamIdByTeamRole" resultType="java.lang.Long">
+        SELECT team_id
+        FROM iam_team_role
+        WHERE tenant_id = #{tenantId} AND id = #{teamRoleId} AND delete_marker = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insertTeamMemberRoleApproval">
+        INSERT INTO iam_team_member_role (
+            id, tenant_id, team_id, user_id, team_role_id, status, active_slot,
+            start_time, expire_time, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{teamId}, #{userId}, #{teamRoleId}, 'ACTIVE', 1,
+            #{startTime}, #{expireTime}, 0, #{now}, #{now})
+    </insert>
+
+    <insert id="insertShareAclApproval">
+        INSERT INTO iam_share_acl (
+            id, tenant_id, share_id, target_type, target_id, permission,
+            status, active_slot, start_time, expire_time, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{shareId}, #{targetType}, #{targetId}, #{permission},
+            #{status}, 1, #{startTime}, #{expireTime}, 0, #{now}, #{now})
+    </insert>
+
+    <insert id="insertMenu">
+        INSERT INTO iam_menu (
+            id, tenant_id, parent_id, menu_key, title, path, icon,
+            sort_order, status, publish_status, permission_code, component,
+            visible, delete_marker, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{parentId}, #{menuKey}, #{title}, #{path}, #{icon},
+            #{sortOrder}, #{status}, #{publishStatus}, #{permissionCode}, #{component},
+            #{visible}, 0, #{version}, #{now}, #{now})
+    </insert>
+
+    <select id="selectMenuById"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$MenuRow">
+        SELECT id, tenant_id, parent_id, menu_key, title, path, icon,
+               sort_order, status, publish_status, permission_code, component,
+               visible, version, created_at, updated_at
+        FROM iam_menu
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND delete_marker = 0
+    </select>
+
+    <select id="selectMenuByKey"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$MenuRow">
+        SELECT id, tenant_id, parent_id, menu_key, title, path, icon,
+               sort_order, status, publish_status, permission_code, component,
+               visible, version, created_at, updated_at
+        FROM iam_menu
+        WHERE tenant_id = #{tenantId} AND menu_key = #{menuKey} AND delete_marker = 0
+    </select>
+
+    <select id="selectAllMenus"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$MenuRow">
+        SELECT id, tenant_id, parent_id, menu_key, title, path, icon,
+               sort_order, status, publish_status, permission_code, component,
+               visible, version, created_at, updated_at
+        FROM iam_menu
+        WHERE tenant_id = #{tenantId} AND delete_marker = 0
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectPublishedActiveMenus"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$MenuRow">
+        SELECT id, tenant_id, parent_id, menu_key, title, path, icon,
+               sort_order, status, publish_status, permission_code, component,
+               visible, version, created_at, updated_at
+        FROM iam_menu
+        WHERE tenant_id = #{tenantId} AND status = 'ACTIVE' AND publish_status = 'PUBLISHED' AND delete_marker = 0
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectPublishedMenusByUserRoles"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$MenuRow">
+        SELECT DISTINCT m.id, m.tenant_id, m.parent_id, m.menu_key, m.title, m.path, m.icon,
+               m.sort_order, m.status, m.publish_status, m.permission_code, m.component,
+               m.visible, m.version, m.created_at, m.updated_at
+        FROM iam_menu m
+        JOIN iam_role_menu rm ON rm.tenant_id = m.tenant_id AND rm.menu_id = m.id
+        JOIN iam_user_role ur ON ur.role_id = rm.role_id
+        WHERE ur.tenant_id = #{tenantId}
+          AND ur.user_id = #{userId}
+          AND ur.status = 'ACTIVE'
+          AND ur.active_slot = 1
+          AND (ur.start_time &lt;= CURRENT_TIMESTAMP(3) OR ur.start_time IS NULL)
+          AND (ur.expire_time IS NULL OR ur.expire_time &gt; CURRENT_TIMESTAMP(3))
+          AND m.status = 'ACTIVE'
+          AND m.publish_status = 'PUBLISHED'
+          AND m.delete_marker = 0
+        ORDER BY m.sort_order ASC, m.id ASC
+    </select>
+
+    <update id="updateMenu">
+        UPDATE iam_menu
+        SET parent_id = #{parentId},
+            menu_key = #{menuKey},
+            title = #{title},
+            path = #{path},
+            icon = #{icon},
+            sort_order = #{sortOrder},
+            permission_code = #{permissionCode},
+            component = #{component},
+            visible = #{visible},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="updateMenuStatus">
+        UPDATE iam_menu
+        SET status = #{status},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="updateMenuPublishStatus">
+        UPDATE iam_menu
+        SET publish_status = #{publishStatus},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="publishAllDraftMenus">
+        UPDATE iam_menu
+        SET publish_status = 'PUBLISHED',
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND publish_status = 'DRAFT' AND delete_marker = 0
+    </update>
+
+    <update id="updateMenuSortOrder">
+        UPDATE iam_menu
+        SET sort_order = #{sortOrder},
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND delete_marker = 0
+    </update>
+
+    <update id="softDeleteMenu">
+        UPDATE iam_menu
+        SET delete_marker = id,
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <!-- ==================== Dict Type Mappings ==================== -->
+    <insert id="insertDictType">
+        INSERT INTO iam_dict_type (
+            id, tenant_id, dict_type, dict_name, status, description, delete_marker, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{dictType}, #{dictName}, #{status}, #{description}, 0, #{version}, #{now}, #{now})
+    </insert>
+
+    <update id="updateDictType">
+        UPDATE iam_dict_type
+        SET dict_name = #{dictName},
+            status = #{status},
+            description = #{description},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="softDeleteDictType">
+        UPDATE iam_dict_type
+        SET delete_marker = id,
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND delete_marker = 0
+    </update>
+
+    <select id="selectDictTypeById"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$DictTypeRow">
+        SELECT id, tenant_id, dict_type, dict_name, status, description, version, created_at, updated_at
+        FROM iam_dict_type
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND delete_marker = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectDictTypeByType"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$DictTypeRow">
+        SELECT id, tenant_id, dict_type, dict_name, status, description, version, created_at, updated_at
+        FROM iam_dict_type
+        WHERE tenant_id = #{tenantId} AND dict_type = #{dictType} AND delete_marker = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectDictTypesPage"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$DictTypeRow">
+        SELECT id, tenant_id, dict_type, dict_name, status, description, version, created_at, updated_at
+        FROM iam_dict_type
+        WHERE tenant_id = #{tenantId} AND delete_marker = 0
+        <if test="keyword != null and keyword != ''">
+            AND (dict_type LIKE CONCAT('%', #{keyword}, '%') OR dict_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countDictTypes" resultType="long">
+        SELECT COUNT(*)
+        FROM iam_dict_type
+        WHERE tenant_id = #{tenantId} AND delete_marker = 0
+        <if test="keyword != null and keyword != ''">
+            AND (dict_type LIKE CONCAT('%', #{keyword}, '%') OR dict_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <!-- ==================== Dict Data Mappings ==================== -->
+    <insert id="insertDictData">
+        INSERT INTO iam_dict_data (
+            id, tenant_id, dict_type, dict_label, dict_value, sort_order, status, css_tag, is_default, description, delete_marker, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{dictType}, #{dictLabel}, #{dictValue}, #{sortOrder}, #{status}, #{cssTag}, #{isDefault}, #{description}, 0, #{version}, #{now}, #{now})
+    </insert>
+
+    <update id="updateDictData">
+        UPDATE iam_dict_data
+        SET dict_label = #{dictLabel},
+            dict_value = #{dictValue},
+            sort_order = #{sortOrder},
+            status = #{status},
+            css_tag = #{cssTag},
+            is_default = #{isDefault},
+            description = #{description},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="softDeleteDictData">
+        UPDATE iam_dict_data
+        SET delete_marker = id,
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND delete_marker = 0
+    </update>
+
+    <select id="selectDictDataById"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$DictDataRow">
+        SELECT id, tenant_id, dict_type, dict_label, dict_value, sort_order, status, css_tag, is_default, description, version, created_at, updated_at
+        FROM iam_dict_data
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND delete_marker = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectDictDataByType"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$DictDataRow">
+        SELECT id, tenant_id, dict_type, dict_label, dict_value, sort_order, status, css_tag, is_default, description, version, created_at, updated_at
+        FROM iam_dict_data
+        WHERE tenant_id = #{tenantId} AND dict_type = #{dictType} AND status = 'ACTIVE' AND delete_marker = 0
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectDictDataPage"
+            resultType="com.enterprise.iam.identity.infrastructure.persistence.mapper.IdentityPersistenceMapper$DictDataRow">
+        SELECT id, tenant_id, dict_type, dict_label, dict_value, sort_order, status, css_tag, is_default, description, version, created_at, updated_at
+        FROM iam_dict_data
+        WHERE tenant_id = #{tenantId} AND delete_marker = 0
+        <if test="dictType != null and dictType != ''">
+            AND dict_type = #{dictType}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (dict_label LIKE CONCAT('%', #{keyword}, '%') OR dict_value LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY sort_order ASC, id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countDictData" resultType="long">
+        SELECT COUNT(*)
+        FROM iam_dict_data
+        WHERE tenant_id = #{tenantId} AND delete_marker = 0
+        <if test="dictType != null and dictType != ''">
+            AND dict_type = #{dictType}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (dict_label LIKE CONCAT('%', #{keyword}, '%') OR dict_value LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+    </select>
+</mapper>

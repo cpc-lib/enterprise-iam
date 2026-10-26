@@ -1,9 +1,9 @@
 package com.enterprise.iam.outbox;
 
+import com.enterprise.iam.outbox.mapper.OutboxPersistenceMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,7 +14,8 @@ class OutboxAutoConfigurationTest {
     private final ApplicationContextRunner contextRunner =
             new ApplicationContextRunner()
                     .withConfiguration(AutoConfigurations.of(OutboxAutoConfiguration.class))
-                    .withBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class))
+                    .withBean(OutboxPersistenceMapper.class,
+                            () -> mock(OutboxPersistenceMapper.class))
                     .withBean(PlatformTransactionManager.class,
                             () -> mock(PlatformTransactionManager.class));
 

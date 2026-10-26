@@ -38,6 +38,22 @@ public class IamDelegationSecurityAutoConfiguration {
         return Clock.systemUTC();
     }
 
+    /**
+     * Auto-provides the JWKS loader from {@code iam.security.delegation.jwks-uri}
+     * unless the deployment supplies its own {@link DelegationJwkSetLoader} or
+     * {@link DelegationPublicKeyResolver} bean. Must be declared before the
+     * resolver bean so {@code @ConditionalOnBean} sees it.
+     */
+    @Bean
+    @ConditionalOnMissingBean({DelegationJwkSetLoader.class, DelegationPublicKeyResolver.class})
+    DelegationJwkSetLoader iamDelegationJwkSetLoader(IamDelegationSecurityProperties properties) {
+        properties.validateJwksConfiguration();
+        return new HttpDelegationJwkSetLoader(
+                properties.getJwksUri(),
+                properties.getJwksAllowedHosts(),
+                properties.isJwksAllowHttp());
+    }
+
     @Bean
     @ConditionalOnBean(DelegationJwkSetLoader.class)
     @ConditionalOnMissingBean(DelegationPublicKeyResolver.class)

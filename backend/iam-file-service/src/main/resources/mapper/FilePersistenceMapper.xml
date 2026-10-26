@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.file.infrastructure.persistence.mapper.FilePersistenceMapper">
+
+    <insert id="insertFileObject">
+        INSERT INTO iam_file_object (id, sha256, file_size, bucket_name, object_key, storage_version,
+            storage_tier, status, reference_count, created_at, updated_at)
+        VALUES (#{id}, UNHEX(#{sha256Hex}), #{fileSize}, #{bucketName}, #{objectKey}, #{storageVersion},
+            #{storageTier}, #{status}, #{referenceCount}, #{now}, #{now})
+    </insert>
+
+    <select id="findFileObjectById" resultType="com.enterprise.iam.file.application.model.FileObject">
+        SELECT id, LOWER(HEX(sha256)) AS sha256Hex, file_size, bucket_name, object_key,
+            storage_version, storage_tier, status, reference_count
+        FROM iam_file_object
+        WHERE id = #{objectId}
+    </select>
+
+    <update id="incrementFileObjectReferenceCount">
+        UPDATE iam_file_object
+        SET reference_count = reference_count + 1, updated_at = #{now}
+        WHERE id = #{objectId}
+    </update>
+
+    <update id="decrementFileObjectReferenceCount">
+        UPDATE iam_file_object
+        SET reference_count = CASE WHEN reference_count > 0 THEN reference_count - 1 ELSE 0 END,
+            updated_at = #{now}
+        WHERE id = #{objectId}
+    </update>
+
+    <select id="findPurgeCandidates" resultType="com.enterprise.iam.file.application.model.PurgeCandidate">
+        SELECT f.tenant_id, f.id AS fileId, f.object_id, o.bucket_name, o.object_key, f.version
+        FROM iam_file f
+        JOIN iam_file_object o ON o.id = f.object_id
+        WHERE f.status = 'DELETED' AND f.legal_hold = 0
+          AND (
+              (f.retention_until IS NOT NULL AND f.retention_until &lt;= #{retentionDue})
+              OR (f.retention_until IS NULL AND f.created_at &lt;= #{createdBeforeCutoff})
+          )
+        ORDER BY f.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="countActiveReferences" resultType="int">
+        SELECT COUNT(*)
+        FROM iam_file_reference
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId}
+          AND status = 'ACTIVE' AND active_slot = 1
+    </select>
+
+    <update id="markFilePurging">
+        UPDATE iam_file
+        SET status = 'PURGING', version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{fileId}
+          AND version = #{expectedVersion} AND status = 'DELETED'
+    </update>
+
+    <update id="markObjectPurging">
+        UPDATE iam_file_object
+        SET status = 'PURGING', updated_at = #{now}
+        WHERE id = #{objectId} AND status IN ('ACTIVE','QUARANTINED')
+    </update>
+
+    <update id="markFilePurged">
+        UPDATE iam_file
+        SET status = 'PURGED', version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{fileId} AND status = 'PURGING'
+    </update>
+
+    <update id="markObjectPurged">
+        UPDATE iam_file_object
+        SET status = 'PURGED', updated_at = #{now}
+        WHERE id = #{objectId} AND status = 'PURGING'
+    </update>
+
+    <update id="revertFilePurging">
+        UPDATE iam_file
+        SET status = 'DELETED', version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{fileId} AND status = 'PURGING'
+    </update>
+
+    <update id="revertObjectPurging">
+        UPDATE iam_file_object
+        SET status = 'ACTIVE', updated_at = #{now}
+        WHERE id = #{objectId} AND status = 'PURGING'
+    </update>
+
+    <insert id="insertFileReference">
+        INSERT INTO iam_file_reference (id, tenant_id, file_id, resource_id, resource_instance_key,
+            reference_type, field_id, sort_order, status, active_slot, version, created_at, updated_at)
+        VALUES (#{reference.id}, #{reference.tenantId}, #{reference.fileId}, #{reference.resourceId},
+            #{reference.resourceInstanceKey}, #{reference.referenceType}, #{reference.fieldId},
+            #{reference.sortOrder}, #{reference.status}, #{reference.activeSlot}, #{reference.version},
+            #{now}, #{now})
+    </insert>
+
+    <select id="findFileReferenceById" resultType="com.enterprise.iam.file.application.model.FileReferenceRow">
+        SELECT id, tenant_id, file_id, resource_id, resource_instance_key, reference_type,
+            field_id, sort_order, status, active_slot, version
+        FROM iam_file_reference
+        WHERE tenant_id = #{tenantId} AND id = #{referenceId}
+    </select>
+
+    <insert id="insertFile">
+        INSERT INTO iam_file (id, tenant_id, object_id, file_name, extension, declared_content_type,
+            detected_content_type, file_size, sha256, owner_user_id, status, scan_status,
+            retention_until, legal_hold, delete_marker, version, created_at, updated_at)
+        VALUES (#{file.id}, #{file.tenantId}, #{file.objectId}, #{file.fileName}, NULL,
+            #{file.declaredContentType}, NULL, #{file.fileSize}, UNHEX(#{file.sha256Hex}),
+            #{file.ownerUserId}, #{file.status}, #{file.scanStatus}, NULL,
+            #{file.legalHold}, #{file.deleteMarker}, #{file.version}, #{now}, #{now})
+    </insert>
+
+    <select id="findFileById" resultType="com.enterprise.iam.file.application.model.FileAggregate">
+        SELECT id, tenant_id, object_id, file_name, declared_content_type, file_size,
+            LOWER(HEX(sha256)) AS sha256Hex, owner_user_id, status, scan_status,
+            legal_hold, delete_marker, version
+        FROM iam_file
+        WHERE tenant_id = #{tenantId} AND id = #{fileId}
+    </select>
+
+    <update id="deleteFileLogical">
+        UPDATE iam_file
+        SET status = 'DELETED', delete_marker = #{deleteMarker}, version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{fileId} AND version = #{expectedVersion}
+    </update>
+
+    <select id="findPendingScanIds" resultType="long">
+        SELECT id
+        FROM iam_file
+        WHERE status = 'VERIFYING' AND scan_status = 'PENDING'
+        ORDER BY id
+        LIMIT #{limit}
+    </select>
+
+    <update id="claimPendingScan">
+        UPDATE iam_file
+        SET status = 'SCANNING', scan_status = 'SCANNING', version = version + 1, updated_at = #{now}
+        WHERE id = #{fileId} AND status = 'VERIFYING' AND scan_status = 'PENDING'
+    </update>
+
+    <update id="claimRetryScan">
+        UPDATE iam_file
+        SET scan_status = 'SCANNING', version = version + 1, updated_at = #{now}
+        WHERE id = #{fileId} AND tenant_id = #{tenantId}
+          AND status = 'SCANNING' AND scan_status = 'FAILED'
+    </update>
+
+    <sql id="latestFailedScanJoin">
+        FROM iam_file f
+        JOIN iam_file_scan_record r
+          ON r.tenant_id = f.tenant_id AND r.file_id = f.id
+         AND r.scan_attempt = (
+             SELECT MAX(r2.scan_attempt)
+             FROM iam_file_scan_record r2
+             WHERE r2.tenant_id = f.tenant_id AND r2.file_id = f.id)
+        WHERE f.status = 'SCANNING' AND f.scan_status = 'FAILED' AND r.result = 'FAILED'
+    </sql>
+
+    <select id="findRetryCandidates"
+            resultType="com.enterprise.iam.file.infrastructure.persistence.mapper.FilePersistenceMapper$RetryCandidateRow">
+        SELECT f.id AS fileId, f.tenant_id, f.file_name, f.declared_content_type, f.file_size,
+            LOWER(HEX(f.sha256)) AS sha256Hex, f.version, r.scan_attempt AS lastAttempt,
+            r.completed_at AS lastCompletedAt
+        <include refid="latestFailedScanJoin" />
+        ORDER BY r.completed_at ASC, f.id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countExhaustedScans" resultType="int">
+        SELECT COUNT(*)
+        <include refid="latestFailedScanJoin" />
+        AND r.scan_attempt >= #{maxAttempts}
+    </select>
+
+    <select id="findClaimedScan" resultType="com.enterprise.iam.file.application.model.ClaimedScan">
+        SELECT tenant_id, id AS fileId, #{attempt} AS attempt, file_name, declared_content_type,
+            file_size, LOWER(HEX(sha256)) AS sha256Hex, version
+        FROM iam_file
+        WHERE id = #{fileId} AND status = 'SCANNING' AND scan_status = 'SCANNING'
+    </select>
+
+    <insert id="insertScanStart">
+        INSERT INTO iam_file_scan_record (id, tenant_id, file_id, scan_attempt, scanner,
+            signature_version, result, threat_code, error_code, started_at, completed_at, created_at)
+        VALUES (#{id}, #{tenantId}, #{fileId}, #{attempt}, #{scanner}, NULL, 'SCANNING',
+            NULL, NULL, #{startedAt}, NULL, #{now})
+    </insert>
+
+    <update id="completeScanRecord">
+        UPDATE iam_file_scan_record
+        SET result = #{result}, threat_code = #{threatCode}, error_code = #{errorCode},
+            signature_version = #{signatureVersion}, completed_at = #{completedAt}
+        WHERE tenant_id = #{tenantId} AND file_id = #{fileId}
+          AND scan_attempt = #{attempt} AND result = 'SCANNING'
+    </update>
+
+    <update id="markFileScanFailed">
+        UPDATE iam_file
+        SET scan_status = 'FAILED', updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{fileId} AND scan_status = 'SCANNING'
+    </update>
+
+    <update id="transitionFileScanTerminal">
+        UPDATE iam_file
+        SET status = #{status}, scan_status = #{scanStatus}, version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{fileId} AND version = #{expectedVersion}
+    </update>
+
+    <insert id="upsertUploadPart">
+        INSERT INTO iam_file_upload_part (id, tenant_id, upload_session_id, part_number, part_size,
+            part_sha256, storage_etag, status, uploaded_at, version, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{uploadSessionId}, #{partNumber}, #{partSize},
+            UNHEX(#{partSha256Hex}), #{storageEtag}, #{status}, #{uploadedAt}, 0, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE part_size = VALUES(part_size), part_sha256 = VALUES(part_sha256),
+            storage_etag = VALUES(storage_etag), status = VALUES(status), uploaded_at = VALUES(uploaded_at),
+            version = version + 1, updated_at = VALUES(updated_at)
+    </insert>
+
+    <select id="findUploadParts" resultType="com.enterprise.iam.file.application.model.FileUploadPartRow">
+        SELECT id, tenant_id, upload_session_id, part_number, part_size,
+            LOWER(HEX(part_sha256)) AS partSha256Hex, storage_etag, status, uploaded_at, version
+        FROM iam_file_upload_part
+        WHERE tenant_id = #{tenantId} AND upload_session_id = #{uploadSessionId}
+        ORDER BY part_number
+    </select>
+
+    <select id="findUploadPart" resultType="com.enterprise.iam.file.application.model.FileUploadPartRow">
+        SELECT id, tenant_id, upload_session_id, part_number, part_size,
+            LOWER(HEX(part_sha256)) AS partSha256Hex, storage_etag, status, uploaded_at, version
+        FROM iam_file_upload_part
+        WHERE tenant_id = #{tenantId} AND upload_session_id = #{uploadSessionId}
+          AND part_number = #{partNumber}
+    </select>
+
+    <insert id="insertUploadSession">
+        INSERT INTO iam_file_upload_session (id, tenant_id, user_id, file_name, file_size, whole_sha256,
+            declared_content_type, storage_upload_id, bucket_name, object_key, part_size, part_count,
+            uploaded_part_count, status, expire_at, completed_file_id, failure_code,
+            quota_reservation_bytes, version, created_at, updated_at)
+        VALUES (#{session.id}, #{session.tenantId}, #{session.userId}, #{session.fileName},
+            #{session.fileSize}, UNHEX(#{session.wholeSha256Hex}), #{session.declaredContentType},
+            #{session.storageUploadId}, #{session.bucketName}, #{session.objectKey}, #{session.partSize},
+            #{session.partCount}, #{session.uploadedPartCount}, #{session.status}, #{session.expireAt},
+            #{session.completedFileId}, NULL, #{session.quotaReservationBytes}, #{session.version},
+            #{now}, #{now})
+    </insert>
+
+    <select id="findUploadSession"
+            resultType="com.enterprise.iam.file.infrastructure.persistence.mapper.FilePersistenceMapper$UploadSessionRow">
+        SELECT id, tenant_id, user_id, file_name, file_size, LOWER(HEX(whole_sha256)) AS wholeSha256Hex,
+            declared_content_type, storage_upload_id, bucket_name, object_key, part_size, part_count,
+            uploaded_part_count, status, expire_at, completed_file_id, quota_reservation_bytes, version
+        FROM iam_file_upload_session
+        WHERE tenant_id = #{tenantId} AND id = #{uploadId}
+    </select>
+
+    <update id="markUploadSessionStatus">
+        UPDATE iam_file_upload_session
+        SET status = #{status}, completed_file_id = #{completedFileId}, version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{uploadId} AND version = #{expectedVersion}
+    </update>
+
+    <update id="incrementUploadedPartCount">
+        UPDATE iam_file_upload_session
+        SET uploaded_part_count = uploaded_part_count + 1,
+            status = CASE WHEN status = 'INIT' THEN 'UPLOADING' ELSE status END,
+            version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{uploadId}
+    </update>
+
+    <update id="abortUploadSession">
+        UPDATE iam_file_upload_session
+        SET status = 'ABORTED', version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{uploadId} AND version = #{expectedVersion}
+    </update>
+
+    <select id="findAllTenantQuotas" resultType="com.enterprise.iam.file.application.model.TenantQuotaRow">
+        SELECT tenant_id, quota_bytes, used_logical_bytes, reserved_bytes, version
+        FROM iam_file_tenant_quota
+    </select>
+
+    <select id="sumLogicalUsage" resultType="long">
+        SELECT COALESCE(SUM(file_size), 0)
+        FROM iam_file
+        WHERE tenant_id = #{tenantId} AND status NOT IN ('DELETED','PURGING','PURGED')
+    </select>
+
+    <select id="sumReservedBytes" resultType="long">
+        SELECT COALESCE(SUM(quota_reservation_bytes), 0)
+        FROM iam_file_upload_session
+        WHERE tenant_id = #{tenantId} AND status IN ('INIT','UPLOADING','VERIFYING','MERGING')
+    </select>
+
+    <update id="adjustQuota">
+        UPDATE iam_file_tenant_quota
+        SET used_logical_bytes = #{usedLogicalBytes}, reserved_bytes = #{reservedBytes},
+            version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND version = #{expectedVersion}
+          AND (#{usedLogicalBytes} + #{reservedBytes}) &lt;= quota_bytes
+    </update>
+
+    <select id="findExpiredSessions" resultType="com.enterprise.iam.file.application.model.ExpiredSession">
+        SELECT tenant_id, id AS sessionId, quota_reservation_bytes, version
+        FROM iam_file_upload_session
+        WHERE status IN ('INIT','UPLOADING','VERIFYING','MERGING') AND expire_at &lt; #{now}
+        ORDER BY expire_at, id
+        LIMIT #{limit}
+    </select>
+
+    <update id="markUploadSessionExpired">
+        UPDATE iam_file_upload_session
+        SET status = 'EXPIRED', version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{sessionId} AND version = #{expectedVersion}
+          AND status IN ('INIT','UPLOADING','VERIFYING','MERGING')
+    </update>
+
+    <update id="releaseQuotaReservation">
+        UPDATE iam_file_tenant_quota
+        SET reserved_bytes = CASE WHEN reserved_bytes >= #{bytes} THEN reserved_bytes - #{bytes} ELSE 0 END,
+            version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId}
+    </update>
+
+    <update id="updateFileDlpOutcome">
+        UPDATE iam_file
+        SET dlp_status = #{dlpStatus}, status = #{status}, version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{fileId}
+    </update>
+
+    <update id="updateFileStorageTier">
+        UPDATE iam_file
+        SET storage_tier = #{storageTier}, status = #{status}, version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{fileId}
+    </update>
+
+    <insert id="insertDrDrillLog">
+        INSERT INTO iam_file_dr_drill_log (id, tenant_id, scenario_code, target_rpo_seconds,
+            actual_rpo_seconds, target_rto_seconds, actual_rto_seconds, verified_objects, status, executed_at)
+        VALUES (#{id}, #{tenantId}, #{scenarioCode}, #{targetRpoSeconds},
+            #{actualRpoSeconds}, #{targetRtoSeconds}, #{actualRtoSeconds}, #{verifiedObjects}, #{status}, #{executedAt})
+    </insert>
+
+    <select id="findDrDrillsByTenant" resultType="com.enterprise.iam.file.domain.model.FileDrDrillRecord">
+        SELECT id, tenant_id, scenario_code, target_rpo_seconds, actual_rpo_seconds,
+            target_rto_seconds, actual_rto_seconds, verified_objects, status, executed_at
+        FROM iam_file_dr_drill_log
+        WHERE tenant_id = #{tenantId}
+        ORDER BY executed_at DESC, id DESC
+        LIMIT 50
+    </select>
+</mapper>

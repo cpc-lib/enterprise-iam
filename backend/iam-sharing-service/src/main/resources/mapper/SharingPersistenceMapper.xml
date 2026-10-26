@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.sharing.infrastructure.persistence.mapper.SharingPersistenceMapper">
+
+    <insert id="insertShare">
+        INSERT INTO iam_resource_share (
+            id, tenant_id, resource_id, resource_instance_key, target_type,
+            target_id, creator_user_id, parent_share_id, root_share_id, share_depth,
+            status, start_time, expire_time, can_reshare, active_slot, revoke_reason,
+            revoked_by, revoked_at, version, created_at, updated_at,
+            scope_type, folder_path, collection_resource_ids_json)
+        VALUES (
+            #{id}, #{tenantId}, #{resourceId}, #{resourceInstanceKey}, #{targetType},
+            #{targetId}, #{creatorUserId}, #{parentShareId}, #{rootShareId}, #{shareDepth},
+            #{status}, #{startTime}, #{expireTime}, #{canReshare}, #{activeSlot}, #{revokeReason},
+            #{revokedBy}, #{revokedAt}, #{version}, #{createdAt}, #{updatedAt},
+            #{scopeType}, #{folderPath}, #{collectionResourceIdsJson})
+    </insert>
+
+    <select id="findShareById"
+            resultType="com.enterprise.iam.sharing.infrastructure.persistence.mapper.SharingPersistenceMapper$ShareRow">
+        SELECT id, tenant_id, resource_id, resource_instance_key, target_type, target_id,
+            creator_user_id, parent_share_id, root_share_id, share_depth, status, start_time,
+            expire_time, can_reshare, active_slot, revoke_reason, revoked_by, revoked_at,
+            version, created_at, updated_at,
+            scope_type, folder_path, collection_resource_ids_json
+        FROM iam_resource_share
+        WHERE tenant_id = #{tenantId} AND id = #{shareId}
+    </select>
+
+    <update id="revokeShare">
+        UPDATE iam_resource_share
+        SET status = #{status}, active_slot = NULL, revoke_reason = #{reason},
+            revoked_by = NULL, revoked_at = #{now}, version = version + 1, updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{shareId} AND version = #{expectedVersion}
+    </update>
+
+    <insert id="insertShareOperation">
+        INSERT INTO iam_resource_share_operation (
+            id, tenant_id, share_id, operation_id, version, created_at)
+        VALUES (#{id}, #{tenantId}, #{shareId}, #{operationId}, #{version}, #{createdAt})
+    </insert>
+
+    <insert id="insertShareField">
+        INSERT INTO iam_resource_share_field (
+            id, tenant_id, share_id, operation_id, field_id,
+            readable, writable, hidden, mask_strategy_id, version, created_at)
+        VALUES (
+            #{id}, #{tenantId}, #{shareId}, #{operationId}, #{fieldId},
+            #{readable}, #{writable}, #{hidden}, #{maskStrategyId}, 0, #{createdAt})
+    </insert>
+
+    <select id="findShareAclOperations"
+            resultType="com.enterprise.iam.sharing.infrastructure.persistence.mapper.SharingPersistenceMapper$ShareAclOperationRow">
+        SELECT id, tenant_id, share_id, operation_id, version, created_at
+        FROM iam_resource_share_operation
+        WHERE tenant_id = #{tenantId} AND share_id = #{shareId}
+        ORDER BY id
+    </select>
+
+    <select id="findShareFields"
+            resultType="com.enterprise.iam.sharing.infrastructure.persistence.mapper.SharingPersistenceMapper$ShareFieldPermissionRow">
+        SELECT field_id, readable, writable, hidden, mask_strategy_id
+        FROM iam_resource_share_field
+        WHERE tenant_id = #{tenantId} AND share_id = #{shareId} AND operation_id = #{operationId}
+        ORDER BY field_id
+    </select>
+
+    <insert id="upsertShareProjectionEpoch">
+        INSERT INTO iam_share_projection_epoch (
+            id, tenant_id, resource_id, epoch, created_at, updated_at)
+        VALUES (#{id}, #{tenantId}, #{resourceId}, #{initialEpoch}, #{now}, #{now})
+        ON DUPLICATE KEY UPDATE
+            epoch = epoch + 1,
+            version = version + 1,
+            updated_at = VALUES(updated_at)
+    </insert>
+
+    <select id="findShareProjectionEpoch" resultType="long">
+        SELECT epoch
+        FROM iam_share_projection_epoch
+        WHERE tenant_id = #{tenantId} AND resource_id = #{resourceId}
+    </select>
+
+    <insert id="advanceExpectedEpoch">
+        INSERT INTO iam_share_security_epoch (
+            tenant_id, resource_id, expected_epoch, applied_epoch, updated_at)
+        VALUES (#{tenantId}, #{resourceId}, #{epoch}, 0, #{now})
+        ON DUPLICATE KEY UPDATE
+            expected_epoch = GREATEST(expected_epoch, VALUES(expected_epoch)),
+            updated_at = VALUES(updated_at)
+    </insert>
+</mapper>

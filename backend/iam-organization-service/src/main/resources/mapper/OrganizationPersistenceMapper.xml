@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper">
+
+    <insert id="insertOrganization">
+        INSERT INTO iam_organization (
+            id, tenant_id, org_code, org_name, parent_id, materialized_path, depth,
+            status, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{orgCode}, #{orgName}, #{parentId}, #{materializedPath}, #{depth},
+            #{status}, #{version}, #{now}, #{now})
+    </insert>
+
+    <select id="findOrganizationById"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$OrganizationRow">
+        SELECT id, tenant_id, org_code, org_name, parent_id, materialized_path, depth,
+            status, version, created_at, updated_at
+        FROM iam_organization
+        WHERE tenant_id = #{tenantId} AND id = #{organizationId} AND delete_marker = 0
+    </select>
+
+    <select id="findOrganizationByCode"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$OrganizationRow">
+        SELECT id, tenant_id, org_code, org_name, parent_id, materialized_path, depth,
+            status, version, created_at, updated_at
+        FROM iam_organization
+        WHERE tenant_id = #{tenantId} AND org_code = #{orgCode} AND delete_marker = 0
+    </select>
+
+    <select id="findAllOrganizations"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$OrganizationRow">
+        SELECT id, tenant_id, org_code, org_name, parent_id, materialized_path, depth,
+            status, version, created_at, updated_at
+        FROM iam_organization
+        WHERE tenant_id = #{tenantId} AND delete_marker = 0
+        ORDER BY depth ASC, org_code ASC
+    </select>
+
+    <update id="updateOrganization">
+        UPDATE iam_organization
+        SET org_code = #{orgCode},
+            org_name = #{orgName},
+            parent_id = #{parentId},
+            materialized_path = #{materializedPath},
+            depth = #{depth},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="updateOrganizationStatus">
+        UPDATE iam_organization
+        SET status = #{status},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="softDeleteOrganization">
+        UPDATE iam_organization
+        SET delete_marker = id,
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <select id="countChildOrganizations" resultType="int">
+        SELECT COUNT(*)
+        FROM iam_organization
+        WHERE tenant_id = #{tenantId} AND parent_id = #{parentId} AND delete_marker = 0
+    </select>
+
+    <select id="countDepartmentMembers" resultType="int">
+        SELECT COUNT(*)
+        FROM iam_user
+        WHERE tenant_id = #{tenantId} AND department_id = #{departmentId} AND delete_marker = 0
+    </select>
+
+    <select id="findDepartmentMembers"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$DepartmentMemberRow">
+        SELECT u.id AS userId, u.tenant_id AS tenantId, u.username, u.display_name AS displayName,
+               u.email, u.phone, u.status, u.department_id AS departmentId,
+               u.position_id AS positionId, p.position_name AS positionName,
+               u.created_at AS joinedAt
+        FROM iam_user u
+        LEFT JOIN iam_position p ON p.tenant_id = u.tenant_id AND p.id = u.position_id AND p.delete_marker = 0
+        WHERE u.tenant_id = #{tenantId} AND u.department_id = #{departmentId} AND u.delete_marker = 0
+        ORDER BY u.id ASC
+    </select>
+
+    <insert id="insertPosition">
+        INSERT INTO iam_position (
+            id, tenant_id, position_code, position_name, organization_id, sort_order,
+            description, status, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{positionCode}, #{positionName}, #{organizationId}, #{sortOrder},
+            #{description}, #{status}, #{version}, #{now}, #{now})
+    </insert>
+
+    <select id="findPositionById"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$PositionRow">
+        SELECT id, tenant_id, position_code, position_name, organization_id, sort_order,
+               description, status, version, created_at, updated_at
+        FROM iam_position
+        WHERE tenant_id = #{tenantId} AND id = #{positionId} AND delete_marker = 0
+    </select>
+
+    <select id="findPositionByCode"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$PositionRow">
+        SELECT id, tenant_id, position_code, position_name, organization_id, sort_order,
+               description, status, version, created_at, updated_at
+        FROM iam_position
+        WHERE tenant_id = #{tenantId} AND position_code = #{positionCode} AND delete_marker = 0
+    </select>
+
+    <select id="listPositions"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$PositionRow">
+        SELECT id, tenant_id, position_code, position_name, organization_id, sort_order,
+               description, status, version, created_at, updated_at
+        FROM iam_position
+        WHERE tenant_id = #{tenantId} AND delete_marker = 0
+        <if test="organizationId != null">
+            AND organization_id = #{organizationId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (position_code LIKE CONCAT('%', #{keyword}, '%') OR position_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <update id="updatePosition">
+        UPDATE iam_position
+        SET position_code = #{positionCode},
+            position_name = #{positionName},
+            organization_id = #{organizationId},
+            sort_order = #{sortOrder},
+            description = #{description},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="updatePositionStatus">
+        UPDATE iam_position
+        SET status = #{status},
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <update id="softDeletePosition">
+        UPDATE iam_position
+        SET delete_marker = id,
+            version = version + 1,
+            updated_at = #{now}
+        WHERE tenant_id = #{tenantId} AND id = #{id} AND version = #{expectedVersion} AND delete_marker = 0
+    </update>
+
+    <insert id="insertTeam">
+        INSERT INTO iam_team (
+            id, tenant_id, organization_id, parent_team_id, team_code, team_name,
+            materialized_path, depth, status, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{organizationId}, #{parentTeamId}, #{teamCode}, #{teamName},
+            #{materializedPath}, #{depth}, #{status}, #{version}, #{now}, #{now})
+    </insert>
+
+    <select id="findTeamById"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$TeamRow">
+        SELECT id, tenant_id, organization_id, parent_team_id, team_code, team_name,
+            materialized_path, depth, status, version, created_at, updated_at
+        FROM iam_team
+        WHERE tenant_id = #{tenantId} AND id = #{teamId} AND delete_marker = 0
+    </select>
+
+    <select id="findTeamByCode"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$TeamRow">
+        SELECT id, tenant_id, organization_id, parent_team_id, team_code, team_name,
+            materialized_path, depth, status, version, created_at, updated_at
+        FROM iam_team
+        WHERE tenant_id = #{tenantId} AND team_code = #{teamCode} AND delete_marker = 0
+    </select>
+
+    <update id="moveTeam">
+        UPDATE iam_team
+        SET parent_team_id = #{newParentTeamId}, version = version + 1, updated_at = NOW()
+        WHERE tenant_id = #{tenantId} AND id = #{teamId} AND version = #{expectedVersion}
+    </update>
+
+    <insert id="insertTeamMember">
+        INSERT INTO iam_team_member (
+            id, tenant_id, team_id, user_id, membership_status, active_slot,
+            joined_at, left_at, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{teamId}, #{userId}, 'ACTIVE', 1,
+            #{joinedAt}, NULL, 0, #{now}, #{now})
+    </insert>
+
+    <select id="findActiveTeamMember"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$TeamMemberRow">
+        SELECT id, tenant_id, team_id, user_id, membership_status, joined_at, left_at, version
+        FROM iam_team_member
+        WHERE tenant_id = #{tenantId} AND team_id = #{teamId} AND user_id = #{userId}
+          AND membership_status = 'ACTIVE' AND active_slot = 1
+    </select>
+
+    <update id="removeTeamMember">
+        UPDATE iam_team_member
+        SET membership_status = 'LEFT', active_slot = NULL, left_at = NOW(),
+            version = version + 1, updated_at = NOW()
+        WHERE tenant_id = #{tenantId} AND team_id = #{teamId} AND user_id = #{userId}
+          AND membership_status = 'ACTIVE' AND active_slot = 1 AND version = #{expectedVersion}
+    </update>
+
+    <update id="revokeTeamMemberRoles">
+        UPDATE iam_team_member_role
+        SET status = 'REVOKED', active_slot = NULL, expire_time = NOW(),
+            version = version + 1, updated_at = NOW()
+        WHERE tenant_id = #{tenantId} AND team_id = #{teamId} AND user_id = #{userId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <insert id="insertTeamRole">
+        INSERT INTO iam_team_role (
+            id, tenant_id, team_id, role_code, role_name, description,
+            status, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{teamId}, #{roleCode}, #{roleName}, #{description},
+            #{status}, 0, #{now}, #{now})
+    </insert>
+
+    <select id="findTeamRoleById"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$TeamRoleRow">
+        SELECT id, tenant_id, team_id, role_code, role_name, description,
+            status, version, created_at, updated_at
+        FROM iam_team_role
+        WHERE tenant_id = #{tenantId} AND id = #{teamRoleId} AND delete_marker = 0
+    </select>
+
+    <select id="findTeamRoleByCode"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$TeamRoleRow">
+        SELECT id, tenant_id, team_id, role_code, role_name, description,
+            status, version, created_at, updated_at
+        FROM iam_team_role
+        WHERE tenant_id = #{tenantId} AND team_id = #{teamId}
+          AND role_code = #{roleCode} AND delete_marker = 0
+    </select>
+
+    <insert id="insertTeamMemberRole">
+        INSERT INTO iam_team_member_role (
+            id, tenant_id, team_id, user_id, team_role_id, status, active_slot,
+            start_time, expire_time, version, created_at, updated_at)
+        VALUES (
+            #{id}, #{tenantId}, #{teamId}, #{userId}, #{teamRoleId}, 'ACTIVE', 1,
+            #{startTime}, NULL, 0, #{now}, #{now})
+    </insert>
+
+    <select id="findActiveTeamMemberRole"
+            resultType="com.enterprise.iam.organization.infrastructure.persistence.mapper.OrganizationPersistenceMapper$TeamMemberRoleRow">
+        SELECT id, tenant_id, team_id, user_id, team_role_id, status, start_time, expire_time, version
+        FROM iam_team_member_role
+        WHERE tenant_id = #{tenantId} AND team_id = #{teamId} AND user_id = #{userId}
+          AND team_role_id = #{teamRoleId} AND status = 'ACTIVE' AND active_slot = 1
+    </select>
+</mapper>

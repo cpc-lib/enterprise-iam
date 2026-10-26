@@ -107,11 +107,8 @@ class AuthenticateLoginUseCaseTest {
             assertThat(session.userId()).isEqualTo(20);
         });
         assertThat(fixture.sessionIssueCount).isEqualTo(1);
-        assertThat(fixture.attempts).singleElement()
-                .satisfies(attempt -> {
-                    assertThat(attempt.successful()).isTrue();
-                    assertThat(attempt.failureReason()).isNull();
-                });
+        // Success is durably recorded inside the session issuer transaction.
+        assertThat(fixture.attempts).isEmpty();
     }
 
     private static LoginCommand command() {

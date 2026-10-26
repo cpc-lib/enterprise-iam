@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.idempotency.mapper.IdempotencyPersistenceMapper">
+
+    <select id="lockRecord"
+            resultType="com.enterprise.iam.idempotency.mapper.IdempotencyPersistenceMapper$RecordRow">
+        SELECT request_hash, status, response_status, response_content_type,
+            response_body, expires_at
+        FROM iam_idempotency_record
+        WHERE tenant_id = #{tenantId} AND idempotency_key = #{key}
+        FOR UPDATE
+    </select>
+
+    <insert id="insertClaim">
+        INSERT INTO iam_idempotency_record
+            (tenant_id, idempotency_key, request_hash, status, expires_at)
+        VALUES (#{tenantId}, #{key}, #{requestHash}, #{status}, #{expiresAt})
+    </insert>
+
+    <update id="takeOverExpiredClaim">
+        UPDATE iam_idempotency_record
+        SET request_hash = #{requestHash}, status = #{status}, response_status = NULL,
+            response_content_type = NULL, response_body = NULL, expires_at = #{expiresAt}
+        WHERE tenant_id = #{tenantId} AND idempotency_key = #{key}
+    </update>
+
+    <update id="commitClaim">
+        UPDATE iam_idempotency_record
+        SET status = #{committedStatus}, response_status = #{responseStatus},
+            response_content_type = #{responseContentType}, response_body = #{responseBody}
+        WHERE tenant_id = #{tenantId} AND idempotency_key = #{key}
+          AND status = #{inFlightStatus}
+    </update>
+
+    <delete id="releaseClaim">
+        DELETE FROM iam_idempotency_record
+        WHERE tenant_id = #{tenantId} AND idempotency_key = #{key}
+          AND status = #{inFlightStatus}
+    </delete>
+</mapper>

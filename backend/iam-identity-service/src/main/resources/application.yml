@@ -4,9 +4,9 @@ spring:
   main:
     banner-mode: "off"
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/iam_identity?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
     hikari:
       pool-name: iam-identity-service-pool
       maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
@@ -19,6 +19,28 @@ spring:
     validate-on-migrate: true
     out-of-order: false
     baseline-on-migrate: false
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    arg-name-based-constructor-auto-mapping: true
+
+iam:
+  identity:
+    enabled: ${IAM_IDENTITY_ENABLED:true}
+    node-id: ${IAM_IDENTITY_NODE_ID:1}
+  # SPEC47 D-4：租户内写命令强制 Idempotency-Key。
+  # /admin/v1/tenants/bootstrap 刻意不纳入：它发生在租户上下文建立之前（无 X-Tenant-Id），
+  # 且其并发已由 tenant_code 唯一约束 + 409 冲突保护。
+  idempotency:
+    enabled: ${IAM_IDEMPOTENCY_ENABLED:false}
+    paths:
+      - /admin/v1/users
+      - /admin/v1/users/*/disable
+      - /admin/v1/users/*/roles/*
+      - /admin/v1/roles
+      - /admin/v1/roles/*/permissions
 
 server:
   port: ${SERVER_PORT:8082}

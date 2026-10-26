@@ -1,6 +1,6 @@
 package com.enterprise.iam.auth.infrastructure.security;
 
-import com.enterprise.iam.auth.application.port.out.PasswordVerifier;
+import com.enterprise.iam.auth.application.port.out.PasswordHasher;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 
 import java.nio.CharBuffer;
@@ -10,7 +10,7 @@ import java.util.Base64;
 import java.util.Objects;
 
 /** Frozen Argon2id parameters from docs/security/SECURITY-PARAMETERS.yaml. */
-public final class Argon2idPasswordVerifier implements PasswordVerifier {
+public final class Argon2idPasswordVerifier implements PasswordHasher {
 
     public static final int SALT_LENGTH_BYTES = 16;
     public static final int HASH_LENGTH_BYTES = 32;
@@ -64,6 +64,7 @@ public final class Argon2idPasswordVerifier implements PasswordVerifier {
     }
 
     /** Used only when provisioning or rotating a credential, never returned by login. */
+    @Override
     public String encode(char[] rawPassword) {
         Objects.requireNonNull(rawPassword, "rawPassword must not be null");
         return encoder.encode(normalize(rawPassword));

@@ -23,6 +23,7 @@ public final class GatewayAccessAuthenticationProperties {
     private Duration unknownKeyRefreshMinimumInterval = Duration.ofSeconds(5);
     private URI jwksUri;
     private Set<String> jwksAllowedHosts = new LinkedHashSet<>();
+    private boolean jwksAllowHttp;
     private Duration jwksConnectTimeout = Duration.ofSeconds(2);
     private Duration jwksRequestTimeout = Duration.ofSeconds(3);
 
@@ -173,6 +174,15 @@ public final class GatewayAccessAuthenticationProperties {
         this.jwksAllowedHosts = jwksAllowedHosts == null
                 ? new LinkedHashSet<>()
                 : new LinkedHashSet<>(jwksAllowedHosts);
+    }
+
+    /** DEV-ONLY: permits the plain-HTTP JWKS loader (docker compose / localhost). */
+    public boolean isJwksAllowHttp() {
+        return jwksAllowHttp;
+    }
+
+    public void setJwksAllowHttp(boolean jwksAllowHttp) {
+        this.jwksAllowHttp = jwksAllowHttp;
     }
 
     public Duration getJwksConnectTimeout() {

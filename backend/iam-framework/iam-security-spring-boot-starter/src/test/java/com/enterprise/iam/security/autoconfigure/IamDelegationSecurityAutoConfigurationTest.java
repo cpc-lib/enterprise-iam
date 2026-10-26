@@ -27,14 +27,14 @@ class IamDelegationSecurityAutoConfigurationTest {
     }
 
     @Test
-    void registersFailClosedFilterForExactServiceAudience() {
+    void registersFailClosedFilterForExactServiceAudienceAndApiPath() {
         contextRunner
                 .withBean(DelegationPublicKeyResolver.class, () -> keyId -> Optional.empty())
                 .withPropertyValues(
                         "iam.security.delegation.enabled=true",
                         "iam.security.delegation.issuer=iam-gateway",
-                        "iam.security.delegation.audience=iam-authorization-service",
-                        "iam.security.delegation.protected-paths[0]=/internal/v1/**")
+                        "iam.security.delegation.audience=iam-auth-service",
+                        "iam.security.delegation.protected-paths[0]=/api/v1/auth/password/change")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(DelegationTokenDecoder.class);
@@ -72,7 +72,7 @@ class IamDelegationSecurityAutoConfigurationTest {
     }
 
     @Test
-    void rejectsProtectedPathOutsideInternalNamespace() {
+    void rejectsBroadRootProtectedPath() {
         contextRunner
                 .withBean(DelegationPublicKeyResolver.class, () -> keyId -> Optional.empty())
                 .withPropertyValues(
@@ -81,5 +81,70 @@ class IamDelegationSecurityAutoConfigurationTest {
                         "iam.security.delegation.audience=iam-authorization-service",
                         "iam.security.delegation.protected-paths[0]=/**")
                 .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void autoProvidesHttpJwksLoaderAndResolverWhenConfigured() {
+        contextRunner
+                .withPropertyValues(
+                        "iam.security.delegation.enabled=true",
+                        "iam.security.delegation.issuer=iam-gateway",
+                        "iam.security.delegation.audience=iam-authorization-service",
+                        "iam.security.delegation.jwks-uri=http://iam-gateway:8080/internal/v1/gateway/delegation-jwks.json",
+                        "iam.security.delegation.jwks-allowed-hosts[0]=iam-gateway",
+                        "iam.security.delegation.jwks-allow-http=true")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(DelegationJwkSetLoader.class))
+                            .isInstanceOf(HttpDelegationJwkSetLoader.class);
+                    assertThat(context).hasSingleBean(DelegationPublicKeyResolver.class);
+                });
+    }
+
+    @Test
+    void autoProvidesHttpsLoaderWithoutAllowHttp() {
+        contextRunner
+                .withPropertyValues(
+                        "iam.security.delegation.enabled=true",
+                        "iam.security.delegation.issuer=iam-gateway",
+                        "iam.security.delegation.audience=iam-authorization-service",
+                        "iam.security.delegation.jwks-uri=https://iam-gateway.example.net/internal/v1/gateway/delegation-jwks.json",
+                        "iam.security.delegation.jwks-allowed-hosts[0]=iam-gateway.example.net")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(DelegationJwkSetLoader.class))
+                            .isInstanceOf(HttpDelegationJwkSetLoader.class);
+                    assertThat(context).hasSingleBean(DelegationPublicKeyResolver.class);
+                });
+    }
+
+    @Test
+    void autoLoaderFailsClosedWithoutJwksUri() {
+        contextRunner
+                .withPropertyValues(
+                        "iam.security.delegation.enabled=true",
+                        "iam.security.delegation.issuer=iam-gateway",
+                        "iam.security.delegation.audience=iam-authorization-service")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasStackTraceContaining("jwks-uri");
+                });
+    }
+
+    @Test
+    void autoLoaderRejectsPlainHttpUnlessExplicitlyAllowed() {
+        contextRunner
+                .withPropertyValues(
+                        "iam.security.delegation.enabled=true",
+                        "iam.security.delegation.issuer=iam-gateway",
+                        "iam.security.delegation.audience=iam-authorization-service",
+                        "iam.security.delegation.jwks-uri=http://iam-gateway:8080/internal/v1/gateway/delegation-jwks.json",
+                        "iam.security.delegation.jwks-allowed-hosts[0]=iam-gateway")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasStackTraceContaining("jwks-allow-http");
+                });
     }
 }

@@ -1,7 +1,8 @@
 package com.enterprise.iam.authorization.domain.model;
 
-import java.util.LinkedHashMap;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -44,6 +45,25 @@ public record AuthorizationRequest(
         Map<String, Object> copy = new LinkedHashMap<>();
         source.forEach((key, value) -> {
             String normalizedKey = normalizeRequired(key, "context key", 1, 64);
+            if (TeamIds.CONTEXT_KEY.equals(normalizedKey) && value instanceof List<?> list) {
+                if (list.size() > TeamIds.MAX_TEAM_IDS) {
+                    throw new IllegalArgumentException(
+                            "teamIds must not exceed " + TeamIds.MAX_TEAM_IDS + " entries");
+                }
+                List<Long> teamIds = new java.util.ArrayList<>();
+                for (Object element : list) {
+                    Long teamId = TeamIds.normalize(element);
+                    if (teamId == null) {
+                        throw new IllegalArgumentException(
+                                "teamIds must contain positive integers");
+                    }
+                    if (!teamIds.contains(teamId)) {
+                        teamIds.add(teamId);
+                    }
+                }
+                copy.put(normalizedKey, Collections.unmodifiableList(teamIds));
+                return;
+            }
             if (value != null
                     && !(value instanceof String)
                     && !(value instanceof Number)

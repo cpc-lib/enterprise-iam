@@ -4,9 +4,9 @@ spring:
   main:
     banner-mode: "off"
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/iam_authorization?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
     hikari:
       pool-name: iam-authorization-service-pool
       maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
@@ -19,6 +19,12 @@ spring:
     validate-on-migrate: true
     out-of-order: false
     baseline-on-migrate: false
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    arg-name-based-constructor-auto-mapping: true
 
 server:
   port: ${SERVER_PORT:8084}
@@ -36,6 +42,37 @@ management:
       show-details: never
 
 iam:
+  authorization:
+    enabled: ${IAM_AUTHORIZATION_ENABLED:true}
+    node-id: ${IAM_AUTHORIZATION_NODE_ID:2}
+    share-acl:
+      queue: ${IAM_AUTHZ_SHARE_ACL_QUEUE:iam.authz.share-acl}
+    cache:
+      l1:
+        enabled: ${IAM_AUTHZ_CACHE_L1_ENABLED:false}
+        ttl: ${IAM_AUTHZ_CACHE_L1_TTL:2s}
+        max-size: ${IAM_AUTHZ_CACHE_L1_MAX_SIZE:10000}
+      l2:
+        enabled: ${IAM_AUTHZ_CACHE_L2_ENABLED:false}
+        ttl: ${IAM_AUTHZ_CACHE_L2_TTL:30s}
+        max-size: ${IAM_AUTHZ_CACHE_L2_MAX_SIZE:50000}
+  idempotency:
+    enabled: ${IAM_IDEMPOTENCY_ENABLED:false}
+    paths:
+      - /admin/v1/team-roles/*/permissions
+      - /admin/v1/data-scopes
+      - /admin/v1/role-permissions/*/data-scopes
+      - /admin/v1/role-permissions/*/field-policies
+      - /admin/v1/resources/*/fields
+      - /admin/v1/field-policies
+  mq:
+    enabled: ${IAM_MQ_ENABLED:false}
+    host: ${IAM_MQ_HOST:rabbitmq}
+    port: ${IAM_MQ_PORT:5672}
+    virtual-host: ${IAM_MQ_VIRTUAL_HOST:/}
+    username: ${IAM_MQ_USERNAME:guest}
+    password: ${IAM_MQ_PASSWORD:guest}
+    exchange-name: ${IAM_MQ_EXCHANGE:iam.domain.events}
   security:
     delegation:
       enabled: ${IAM_DELEGATION_ENABLED:false}
@@ -48,3 +85,8 @@ iam:
       jwks-cache-ttl: 5m
       unknown-key-ttl: 30s
       unknown-key-refresh-minimum-interval: 5s
+      # Gateway delegation JWKS (auto-configured loader; required when delegation is enabled
+      # and no custom DelegationJwkSetLoader bean exists). Plain http is DEV-ONLY.
+      jwks-uri: ${IAM_DELEGATION_JWKS_URI:}
+      jwks-allowed-hosts: ${IAM_DELEGATION_JWKS_ALLOWED_HOSTS:}
+      jwks-allow-http: ${IAM_DELEGATION_JWKS_ALLOW_HTTP:false}

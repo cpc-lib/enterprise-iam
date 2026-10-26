@@ -9,6 +9,10 @@ import com.enterprise.iam.auth.application.port.out.RefreshTokenRotator;
 import com.enterprise.iam.auth.application.port.out.SessionProjectionOutboxAppender;
 import com.enterprise.iam.auth.application.service.RefreshRotationPolicy;
 import com.enterprise.iam.auth.infrastructure.config.SessionIssuanceProperties;
+import com.enterprise.iam.auth.infrastructure.persistence.mapper.AuthPersistenceMapper;
+import com.enterprise.iam.auth.infrastructure.persistence.mapper.AuthPersistenceMapper.StoredLoginDeliveryRow;
+import com.enterprise.iam.auth.infrastructure.persistence.mapper.AuthPersistenceMapper.StoredRefreshTokenRow;
+import com.enterprise.iam.auth.infrastructure.persistence.mapper.AuthPersistenceMapper.StoredSessionRow;
 import com.enterprise.iam.auth.infrastructure.security.HmacSha256RefreshTokenHasher;
 import com.enterprise.iam.auth.infrastructure.security.SecureOpaqueRefreshTokenGenerator;
 import com.enterprise.iam.common.security.access.AccessTokenSigner;
@@ -16,12 +20,10 @@ import com.enterprise.iam.common.security.access.AccessTokenSigningRequest;
 import com.enterprise.iam.common.security.access.SignedAccessToken;
 import com.enterprise.iam.common.security.session.SessionProjectionStatus;
 import com.enterprise.iam.common.security.session.SessionSecurityProjection;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,68 +40,7 @@ import java.util.Objects;
  */
 public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenRotator {
 
-    static final String LOCK_SECURITY_STATE_SQL = """
-            SELECT token_version
-            FROM iam_user_security_state
-            WHERE tenant_id = ? AND user_id = ?
-            FOR UPDATE
-            """;
-
-    static final String SELECT_TOKEN_BY_HASH_SQL = """
-            SELECT id, tenant_id, user_id, session_id, token_family_id, status, expire_at
-            FROM iam_refresh_token
-            WHERE token_hash = ?
-            """;
-
-    static final String SELECT_SESSION_FOR_UPDATE_SQL = """
-            SELECT user_id, status, idle_expire_at, absolute_expire_at, session_version
-            FROM iam_login_session
-            WHERE tenant_id = ? AND session_id = ?
-            FOR UPDATE
-            """;
-
-    static final String CAS_ROTATE_TOKEN_SQL = """
-            UPDATE iam_refresh_token
-            SET status = 'ROTATED', replaced_by_token_id = ?, rotated_at = ?,
-                version = version + 1
-            WHERE id = ? AND tenant_id = ? AND status = 'ACTIVE'
-            """;
-
-    static final String INSERT_SUCCESSOR_TOKEN_SQL = """
-            INSERT INTO iam_refresh_token (
-                id, tenant_id, user_id, session_id, token_family_id,
-                token_hash, parent_token_id, status, issued_at, expire_at, version,
-                created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, 0, ?, ?)
-            """;
-
-    static final String SLIDE_SESSION_SQL = """
-            UPDATE iam_login_session
-            SET last_access_at = ?, idle_expire_at = ?, session_version = session_version + 1
-            WHERE tenant_id = ? AND session_id = ? AND status = 'ACTIVE'
-            """;
-
-    static final String MARK_PRESENTED_TOKEN_REUSED_SQL = """
-            UPDATE iam_refresh_token
-            SET status = 'REUSED', revoked_at = ?, revoke_reason = 'REUSE_DETECTED'
-            WHERE id = ? AND tenant_id = ? AND status IN ('ACTIVE', 'ROTATED', 'REUSED')
-            """;
-
-    static final String REVOKE_FAMILY_SQL = """
-            UPDATE iam_refresh_token
-            SET status = 'REVOKED', revoked_at = ?, revoke_reason = 'REUSE_DETECTED',
-                version = version + 1
-            WHERE tenant_id = ? AND token_family_id = ? AND status IN ('ACTIVE', 'ROTATED')
-            """;
-
-    static final String REVOKE_SESSION_SQL = """
-            UPDATE iam_login_session
-            SET status = 'REVOKED', revoked_at = ?, revoke_reason = 'REFRESH_TOKEN_REUSE',
-                session_version = session_version + 1
-            WHERE tenant_id = ? AND session_id = ? AND status = 'ACTIVE'
-            """;
-
-    private final JdbcTemplate jdbcTemplate;
+    private final AuthPersistenceMapper mapper;
     private final TransactionTemplate transaction;
     private final AccessTokenSigner accessTokenSigner;
     private final PositiveIdGenerator idGenerator;
@@ -111,7 +52,7 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
     private final SessionIssuanceProperties properties;
 
     public TransactionalJdbcRefreshTokenRotator(
-            JdbcTemplate jdbcTemplate,
+            AuthPersistenceMapper mapper,
             PlatformTransactionManager transactionManager,
             AccessTokenSigner accessTokenSigner,
             PositiveIdGenerator idGenerator,
@@ -121,7 +62,7 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
             Clock clock,
             SessionIssuanceProperties properties) {
         this(
-                jdbcTemplate,
+                mapper,
                 transactionManager,
                 accessTokenSigner,
                 idGenerator,
@@ -134,7 +75,7 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
     }
 
     TransactionalJdbcRefreshTokenRotator(
-            JdbcTemplate jdbcTemplate,
+            AuthPersistenceMapper mapper,
             PlatformTransactionManager transactionManager,
             AccessTokenSigner accessTokenSigner,
             PositiveIdGenerator idGenerator,
@@ -144,7 +85,7 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
             RefreshRotationPolicy policy,
             Clock clock,
             SessionIssuanceProperties properties) {
-        this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "jdbcTemplate must not be null");
+        this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
         this.transaction = new TransactionTemplate(Objects.requireNonNull(
                 transactionManager, "transactionManager must not be null"));
         this.accessTokenSigner = Objects.requireNonNull(
@@ -184,7 +125,10 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
             if (generated[0] != null) {
                 generated[0].destroy();
             }
-            throw exception;
+            if (exception instanceof SessionIssuanceException issuanceException) {
+                throw issuanceException;
+            }
+            throw new RefreshRotationException("refresh rotation failed", exception);
         } finally {
             command.destroy();
         }
@@ -196,7 +140,7 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
         Instant now = Instant.ofEpochMilli(clock.instant().toEpochMilli());
 
         byte[] presentedHash = hashPresentedToken(command);
-        final StoredRefreshToken token;
+        final StoredRefreshTokenRow token;
         try {
             token = findTokenByHash(presentedHash);
         } finally {
@@ -206,8 +150,9 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
             return RefreshRotationResult.rejected();
         }
 
+        lockLoginDelivery(token);
         long tokenVersion = lockTokenVersion(token);
-        StoredSession session = findSessionForUpdate(token);
+        StoredSessionRow session = findSessionForUpdate(token);
 
         RefreshRotationPolicy.Decision decision = session == null
                 ? RefreshRotationPolicy.Decision.REUSE_DETECTED
@@ -231,8 +176,8 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
     }
 
     private RefreshRotationResult rotateActiveToken(
-            StoredRefreshToken token,
-            StoredSession session,
+            StoredRefreshTokenRow token,
+            StoredSessionRow session,
             long tokenVersion,
             Instant now,
             SensitiveRefreshToken[] generated) {
@@ -241,12 +186,8 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
         byte[] successorHash = refreshTokenHasher.hash(successor);
         try {
             long successorId = idGenerator.nextId();
-            int rotated = jdbcTemplate.update(
-                    CAS_ROTATE_TOKEN_SQL,
-                    successorId,
-                    Timestamp.from(now),
-                    token.id(),
-                    token.tenantId());
+            int rotated = mapper.rotateRefreshToken(
+                    successorId, now, token.id(), token.tenantId());
             if (rotated != 1) {
                 generated[0] = null;
                 successor.destroy();
@@ -261,13 +202,11 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
 
             Instant newIdleExpiry = earliest(
                     now.plus(properties.getIdleTtl()), session.absoluteExpireAt());
-            int slid = jdbcTemplate.update(
-                    SLIDE_SESSION_SQL,
-                    Timestamp.from(now),
-                    Timestamp.from(newIdleExpiry),
-                    token.tenantId(),
-                    token.sessionId());
+            int slid = mapper.slideSession(
+                    token.tenantId(), token.sessionId(), now, newIdleExpiry);
             requireOneRow(slid, "session idle slide");
+            // A valid refresh cookie proves the original login response reached this client.
+            mapper.confirmLoginDelivery(token.tenantId(), token.sessionId(), now);
 
             long successorSessionVersion = session.sessionVersion() + 1;
             projectionAppender.append(
@@ -307,18 +246,15 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
     }
 
     private void revokeFamily(
-            StoredRefreshToken token,
-            StoredSession session,
+            StoredRefreshTokenRow token,
+            StoredSessionRow session,
             long tokenVersion,
             Instant now) {
-        Timestamp timestamp = Timestamp.from(now);
-        jdbcTemplate.update(
-                MARK_PRESENTED_TOKEN_REUSED_SQL, timestamp, token.id(), token.tenantId());
-        jdbcTemplate.update(
-                REVOKE_FAMILY_SQL, timestamp, token.tenantId(), token.tokenFamilyId());
+        mapper.markPresentedTokenReused(token.id(), token.tenantId(), now);
+        mapper.revokeRefreshTokenFamily(token.tenantId(), token.tokenFamilyId(), now);
         if (session != null) {
-            int revoked = jdbcTemplate.update(
-                    REVOKE_SESSION_SQL, timestamp, token.tenantId(), token.sessionId());
+            int revoked = mapper.revokeSessionForTokenReuse(
+                    token.tenantId(), token.sessionId(), now);
             if (revoked == 1) {
                 projectionAppender.append(
                         idGenerator.nextId(),
@@ -337,22 +273,16 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
     }
 
     private byte[] hashPresentedToken(RefreshRotationCommand command) {
-        return refreshTokenHasher.hash(
-                new SensitiveRefreshToken(command.presentedTokenCopy()));
+        char[] presented = command.presentedTokenCopy();
+        try (SensitiveRefreshToken token = new SensitiveRefreshToken(presented)) {
+            return refreshTokenHasher.hash(token);
+        } finally {
+            Arrays.fill(presented, '\0');
+        }
     }
 
-    private StoredRefreshToken findTokenByHash(byte[] tokenHash) {
-        List<StoredRefreshToken> matches = jdbcTemplate.query(
-                SELECT_TOKEN_BY_HASH_SQL,
-                (resultSet, rowNumber) -> new StoredRefreshToken(
-                        resultSet.getLong("id"),
-                        resultSet.getLong("tenant_id"),
-                        resultSet.getLong("user_id"),
-                        resultSet.getLong("session_id"),
-                        resultSet.getLong("token_family_id"),
-                        resultSet.getString("status"),
-                        resultSet.getTimestamp("expire_at").toInstant()),
-                tokenHash);
+    private StoredRefreshTokenRow findTokenByHash(byte[] tokenHash) {
+        List<StoredRefreshTokenRow> matches = mapper.findRefreshTokenByHash(tokenHash);
         if (matches.size() > 1) {
             throw new RefreshRotationException(
                     "refresh token hash is not unique which must be impossible");
@@ -360,12 +290,8 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
         return matches.isEmpty() ? null : matches.get(0);
     }
 
-    private long lockTokenVersion(StoredRefreshToken token) {
-        List<Long> versions = jdbcTemplate.query(
-                LOCK_SECURITY_STATE_SQL,
-                (resultSet, rowNumber) -> resultSet.getLong("token_version"),
-                token.tenantId(),
-                token.userId());
+    private long lockTokenVersion(StoredRefreshTokenRow token) {
+        List<Long> versions = mapper.lockTokenVersion(token.tenantId(), token.userId());
         if (versions.size() != 1 || versions.get(0) == null || versions.get(0) <= 0) {
             throw new RefreshRotationException(
                     "authoritative user security state is missing or invalid");
@@ -373,17 +299,21 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
         return versions.get(0);
     }
 
-    private StoredSession findSessionForUpdate(StoredRefreshToken token) {
-        List<StoredSession> sessions = jdbcTemplate.query(
-                SELECT_SESSION_FOR_UPDATE_SQL,
-                (resultSet, rowNumber) -> new StoredSession(
-                        resultSet.getLong("user_id"),
-                        resultSet.getString("status"),
-                        resultSet.getTimestamp("idle_expire_at").toInstant(),
-                        resultSet.getTimestamp("absolute_expire_at").toInstant(),
-                        resultSet.getLong("session_version")),
-                token.tenantId(),
-                token.sessionId());
+    private void lockLoginDelivery(StoredRefreshTokenRow token) {
+        List<StoredLoginDeliveryRow> deliveries = mapper.findLoginDeliveryForUpdate(
+                token.tenantId(), token.sessionId());
+        if (deliveries.size() > 1) {
+            throw new RefreshRotationException("login delivery is not unique");
+        }
+        if (!deliveries.isEmpty() && deliveries.get(0).userId() != token.userId()) {
+            throw new RefreshRotationException(
+                    "refresh token points at a login delivery owned by another user");
+        }
+    }
+
+    private StoredSessionRow findSessionForUpdate(StoredRefreshTokenRow token) {
+        List<StoredSessionRow> sessions = mapper.findSessionForUpdate(
+                token.tenantId(), token.sessionId());
         if (sessions.size() > 1) {
             throw new RefreshRotationException(
                     "login session is not unique which must be impossible");
@@ -396,14 +326,12 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
     }
 
     private void insertSuccessorToken(
-            StoredRefreshToken token,
+            StoredRefreshTokenRow token,
             long successorId,
             byte[] successorHash,
             Instant now,
             Instant expiry) {
-        Timestamp timestamp = Timestamp.from(now);
-        int updated = jdbcTemplate.update(
-                INSERT_SUCCESSOR_TOKEN_SQL,
+        int updated = mapper.insertSuccessorRefreshToken(
                 successorId,
                 token.tenantId(),
                 token.userId(),
@@ -411,10 +339,8 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
                 token.tokenFamilyId(),
                 successorHash,
                 token.id(),
-                timestamp,
-                Timestamp.from(expiry),
-                timestamp,
-                timestamp);
+                now,
+                expiry);
         requireOneRow(updated, "successor refresh token insert");
     }
 
@@ -459,21 +385,4 @@ public final class TransactionalJdbcRefreshTokenRotator implements RefreshTokenR
         }
     }
 
-    private record StoredRefreshToken(
-            long id,
-            long tenantId,
-            long userId,
-            long sessionId,
-            long tokenFamilyId,
-            String status,
-            Instant expireAt) {
-    }
-
-    private record StoredSession(
-            long userId,
-            String status,
-            Instant idleExpireAt,
-            Instant absoluteExpireAt,
-            long sessionVersion) {
-    }
 }

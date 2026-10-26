@@ -24,10 +24,28 @@ class PathPatternDelegationRequestMatcherTest {
     }
 
     @Test
-    void rejectsConfigurationOutsideInternalNamespace() {
+    void matchesAnExplicitApiApplicationPath() {
+        var matcher = new PathPatternDelegationRequestMatcher(
+                List.of("/api/v1/auth/password/change"));
+
+        assertThat(matcher.matches(new MockHttpServletRequest(
+                "POST", "/api/v1/auth/password/change"))).isTrue();
+        assertThat(matcher.matches(new MockHttpServletRequest(
+                "POST", "/api/v1/auth/refresh"))).isFalse();
+    }
+
+    @Test
+    void rejectsBroadRootConfiguration() {
         assertThatThrownBy(() -> new PathPatternDelegationRequestMatcher(List.of("/**")))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("below /internal");
+                .hasMessageContaining("exact /api paths");
+    }
+
+    @Test
+    void rejectsWildcardApiConfiguration() {
+        assertThatThrownBy(() -> new PathPatternDelegationRequestMatcher(List.of("/api/**")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exact /api paths");
     }
 
     @Test

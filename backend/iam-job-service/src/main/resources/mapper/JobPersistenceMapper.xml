@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.job.infrastructure.persistence.mapper.JobPersistenceMapper">
+
+    <select id="findAllDefinitions" resultType="com.enterprise.iam.job.infrastructure.persistence.mapper.JobDefinitionRow">
+        SELECT id, job_code AS jobCode, job_name AS jobName, description,
+               cron_expression AS cronExpression, status, created_at AS createdAt, updated_at AS updatedAt
+        FROM iam_job_definition
+        ORDER BY id ASC
+    </select>
+
+    <select id="findDefinitionByCode" resultType="com.enterprise.iam.job.infrastructure.persistence.mapper.JobDefinitionRow">
+        SELECT id, job_code AS jobCode, job_name AS jobName, description,
+               cron_expression AS cronExpression, status, created_at AS createdAt, updated_at AS updatedAt
+        FROM iam_job_definition
+        WHERE job_code = #{jobCode}
+    </select>
+
+    <insert id="insertDefinition">
+        INSERT INTO iam_job_definition (id, job_code, job_name, description, cron_expression, status, created_at, updated_at)
+        VALUES (#{id}, #{jobCode}, #{jobName}, #{description}, #{cronExpression}, #{status}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="updateDefinition">
+        UPDATE iam_job_definition
+        SET job_name = #{jobName},
+            description = #{description},
+            cron_expression = #{cronExpression},
+            status = #{status},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <insert id="insertExecutionLog">
+        INSERT INTO iam_job_execution_log (id, job_code, execution_id, status, start_time, end_time, items_processed, items_converged, error_message, created_at)
+        VALUES (#{id}, #{jobCode}, #{executionId}, #{status}, #{startTime}, #{endTime}, #{itemsProcessed}, #{itemsConverged}, #{errorMessage}, #{createdAt})
+    </insert>
+
+    <update id="updateExecutionLog">
+        UPDATE iam_job_execution_log
+        SET status = #{status},
+            end_time = #{endTime},
+            items_processed = #{itemsProcessed},
+            items_converged = #{itemsConverged},
+            error_message = #{errorMessage}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findExecutionLogsByCode" resultType="com.enterprise.iam.job.infrastructure.persistence.mapper.JobExecutionLogRow">
+        SELECT id, job_code AS jobCode, execution_id AS executionId, status,
+               start_time AS startTime, end_time AS endTime,
+               items_processed AS itemsProcessed, items_converged AS itemsConverged,
+               error_message AS errorMessage, created_at AS createdAt
+        FROM iam_job_execution_log
+        WHERE job_code = #{jobCode}
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findExecutionLogById" resultType="com.enterprise.iam.job.infrastructure.persistence.mapper.JobExecutionLogRow">
+        SELECT id, job_code AS jobCode, execution_id AS executionId, status,
+               start_time AS startTime, end_time AS endTime,
+               items_processed AS itemsProcessed, items_converged AS itemsConverged,
+               error_message AS errorMessage, created_at AS createdAt
+        FROM iam_job_execution_log
+        WHERE id = #{id}
+    </select>
+
+</mapper>

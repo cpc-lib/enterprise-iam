@@ -1,12 +1,12 @@
-spring:
+﻿spring:
   application:
     name: iam-auth-service
   main:
     banner-mode: "off"
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:mysql://localhost:3306/iam_auth?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
     hikari:
       pool-name: iam-auth-service-pool
       maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
@@ -19,6 +19,12 @@ spring:
     validate-on-migrate: true
     out-of-order: false
     baseline-on-migrate: false
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    arg-name-based-constructor-auto-mapping: true
 
 server:
   port: ${SERVER_PORT:8081}
@@ -37,13 +43,37 @@ management:
 
 iam:
   auth:
+    http:
+      enabled: ${IAM_AUTH_HTTP_ENABLED:true}
     session-issuance:
-      enabled: ${IAM_AUTH_SESSION_ISSUANCE_ENABLED:false}
+      enabled: ${IAM_AUTH_SESSION_ISSUANCE_ENABLED:true}
+      node-id: ${IAM_AUTH_SESSION_NODE_ID:1}
       idle-ttl: ${IAM_AUTH_SESSION_IDLE_TTL:1d}
       absolute-ttl: ${IAM_AUTH_SESSION_ABSOLUTE_TTL:30d}
       refresh-token-ttl: ${IAM_AUTH_REFRESH_TOKEN_TTL:14d}
       maximum-concurrent-sessions: ${IAM_AUTH_MAX_CONCURRENT_SESSIONS:10}
       transaction-timeout: ${IAM_AUTH_SESSION_TRANSACTION_TIMEOUT:5s}
+      login-delivery-confirmation-ttl: ${IAM_AUTH_LOGIN_DELIVERY_CONFIRMATION_TTL:60s}
+      orphan-reconciliation-poll-delay: ${IAM_AUTH_ORPHAN_RECONCILIATION_POLL_DELAY:10s}
+      orphan-reconciliation-batch-size: ${IAM_AUTH_ORPHAN_RECONCILIATION_BATCH_SIZE:50}
+    crypto:
+      # Key-material source for session issuance; only "local" (configured PEM/secret) is built in.
+      provider: ${IAM_AUTH_CRYPTO_PROVIDER:local}
+      # PKCS#8 EC P-256 private key for ES256 access-token signing (inline PEM or file path).
+      # PEM may be a single line with \n escapes. Required when session-issuance is enabled.
+      access-token-private-key-pem: ${IAM_AUTH_CRYPTO_ACCESS_TOKEN_PRIVATE_KEY_PEM:-----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCC3UJTpznY/8SSlyKsnDUb++hb4rYMfUhwkXBvnnUzJqA==\n-----END PRIVATE KEY-----}
+      access-token-private-key-path: ${IAM_AUTH_CRYPTO_ACCESS_TOKEN_PRIVATE_KEY_PATH:}
+      access-token-kid: ${IAM_AUTH_CRYPTO_ACCESS_TOKEN_KID:auth-key-1}
+      # HMAC-SHA256 secret for refresh-token hashing (base64 or plain, >= 32 bytes).
+      refresh-token-hmac-secret: ${IAM_AUTH_CRYPTO_REFRESH_TOKEN_HMAC_SECRET:my0B0ntBsG9HvQdJx6c1Go9DDJiDu3X7fbRr3Juu44k=}
+  mq:
+    enabled: ${IAM_MQ_ENABLED:false}
+    host: ${IAM_MQ_HOST:rabbitmq}
+    port: ${IAM_MQ_PORT:5672}
+    virtual-host: ${IAM_MQ_VIRTUAL_HOST:/}
+    username: ${IAM_MQ_USERNAME:guest}
+    password: ${IAM_MQ_PASSWORD:guest}
+    exchange-name: ${IAM_MQ_EXCHANGE_NAME:iam.domain.events}
   outbox:
     relay:
       enabled: ${IAM_OUTBOX_RELAY_ENABLED:false}
@@ -53,3 +83,28 @@ iam:
       lease-duration: ${IAM_OUTBOX_LEASE_DURATION:30s}
       initial-backoff: ${IAM_OUTBOX_INITIAL_BACKOFF:1s}
       maximum-backoff: ${IAM_OUTBOX_MAXIMUM_BACKOFF:5m}
+  # SPEC47 D-4锛歭ogout銆佹敼瀵嗕笌鏃犵瀵嗗搷搴旂殑浜や粯纭寮哄埗 Idempotency-Key銆?
+  # login 涓?refresh 鍒绘剰涓嶇撼鍏ワ紙瑙?openapi-code-phase-01 鐨?
+  # x-iam-idempotency-policy / x-iam-retry-semantics锛夛細瀵嗛挜绫昏璇佸皾璇曚笉鍙噸鏀撅紝
+  # 閲嶈瘯蹇呴』閲嶆柊鏍￠獙鍑嵁/鍒锋柊浠ょ墝锛岃€岄潪杩斿洖缂撳瓨鍝嶅簲銆?
+  idempotency:
+    enabled: ${IAM_IDEMPOTENCY_ENABLED:false}
+    paths:
+      - /api/v1/auth/login-deliveries/confirm
+      - /api/v1/auth/logout
+      - /api/v1/auth/password/change
+  security:
+    delegation:
+      enabled: ${IAM_DELEGATION_ENABLED:false}
+      issuer: iam-gateway
+      audience: iam-auth-service
+      protected-paths:
+        - /api/v1/auth/password/change
+      maximum-ttl: 30s
+      clock-skew: 5s
+      jwks-cache-ttl: 5m
+      unknown-key-ttl: 30s
+      unknown-key-refresh-minimum-interval: 5s
+      jwks-uri: ${IAM_DELEGATION_JWKS_URI:}
+      jwks-allowed-hosts: ${IAM_DELEGATION_JWKS_ALLOWED_HOSTS:}
+      jwks-allow-http: ${IAM_DELEGATION_JWKS_ALLOW_HTTP:false}

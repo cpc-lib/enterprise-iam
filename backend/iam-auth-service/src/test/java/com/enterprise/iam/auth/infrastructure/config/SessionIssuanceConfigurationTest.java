@@ -1,13 +1,14 @@
 package com.enterprise.iam.auth.infrastructure.config;
 
 import com.enterprise.iam.auth.application.port.out.LoginSessionIssuer;
+import com.enterprise.iam.auth.application.port.out.LoginAuditOutboxAppender;
 import com.enterprise.iam.auth.application.port.out.SessionProjectionOutboxAppender;
+import com.enterprise.iam.auth.infrastructure.persistence.mapper.AuthPersistenceMapper;
 import com.enterprise.iam.auth.infrastructure.security.RefreshTokenHashKey;
 import com.enterprise.iam.common.security.access.AccessTokenSigner;
 import com.enterprise.iam.common.security.access.SignedAccessToken;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.crypto.spec.SecretKeySpec;
@@ -20,11 +21,13 @@ class SessionIssuanceConfigurationTest {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(SessionIssuanceConfiguration.class)
-            .withBean(JdbcTemplate.class, () -> mock(JdbcTemplate.class))
+            .withBean(AuthPersistenceMapper.class, () -> mock(AuthPersistenceMapper.class))
             .withBean(PlatformTransactionManager.class,
                     () -> mock(PlatformTransactionManager.class))
             .withBean(SessionProjectionOutboxAppender.class,
                     () -> (eventId, projection, occurredAt) -> { })
+            .withBean(LoginAuditOutboxAppender.class,
+                    () -> mock(LoginAuditOutboxAppender.class))
             .withBean(RefreshTokenHashKey.class,
                     SessionIssuanceConfigurationTest::hashKey);
 

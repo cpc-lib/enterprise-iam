@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f7fa;
+  color: #1e293b;
+}
+
+/* ---- antd v5 + tailwind v4 共存修正 ----
+   Tailwind preflight 位于 @layer base，antd 样式未分层且优先级更高，preflight 不会破坏 antd；
+   反向覆盖（自定义覆盖 antd）需要比 antd 的 :where(...) 选择器更高优先级。 */
+
+/* 产品偏好：按钮字重清晰（500） */
+button.ant-btn {
+  font-weight: 500;
+}
+
+/* 内联菜单去掉 antd 默认右边框（Sider 自带分隔线） */
+.ant-menu.ant-menu-inline {
+  border-inline-end: none;
+}
+
+/* 侧边栏内部容器 flex 布局与高度约束：
+   Ant Design Sider 会在最外层 aside 内生成 .ant-layout-sider-children 容器包裹子节点，
+   默认 block 布局会导致 flex-1 高度计算失效且不可滚动；
+   设置 flex-col + min-h-0 使其子级菜单容器（.flex-1.overflow-y-auto）在菜单项过多时产生纵向平滑滚动条，
+   确保所有底部菜单（在线会话、数据字典、调度中心、租户初始化等）完整展现且可滚动访问。 */
+.ant-layout-sider .ant-layout-sider-children {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* 侧边栏滚动条样式 */
+.ant-layout-sider .ant-layout-sider-children ::-webkit-scrollbar {
+  width: 5px;
+}
+.ant-layout-sider .ant-layout-sider-children ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ant-layout-sider .ant-layout-sider-children ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.ant-layout-sider .ant-layout-sider-children ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

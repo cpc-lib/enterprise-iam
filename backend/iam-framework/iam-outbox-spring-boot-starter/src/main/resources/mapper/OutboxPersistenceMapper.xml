@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.enterprise.iam.outbox.mapper.OutboxPersistenceMapper">
+
+    <insert id="insertOutboxEvent">
+        INSERT INTO sys_outbox_event (
+            id, event_id, tenant_id, aggregate_type, aggregate_id,
+            aggregate_version, event_type, schema_version, exchange_name,
+            routing_key, payload, event_status, retry_count, next_retry_at,
+            created_at, version)
+        VALUES (#{event.id}, #{event.eventId}, #{event.tenantId}, #{event.aggregateType},
+            #{event.aggregateId}, #{event.aggregateVersion}, #{event.eventType},
+            #{event.schemaVersion}, 'iam.local', #{event.eventType}, #{event.payload},
+            'PENDING', 0, #{event.occurredAt}, #{event.occurredAt}, 0)
+    </insert>
+
+    <select id="claimableIds" resultType="long">
+        SELECT id
+        FROM sys_outbox_event
+        WHERE (event_status = 'PENDING'
+                AND (next_retry_at IS NULL OR next_retry_at &lt;= #{now}))
+           OR (event_status = 'CLAIMED' AND claim_until &lt;= #{now})
+        ORDER BY id
+        LIMIT #{batchSize}
+        FOR UPDATE SKIP LOCKED
+    </select>
+
+    <update id="claimRows">
+        UPDATE sys_outbox_event
+        SET event_status = 'CLAIMED', claim_owner = #{owner},
+            claim_until = #{claimUntil}, next_retry_at = NULL,
+            version = version + 1
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <select id="loadClaimedRows" resultType="com.enterprise.iam.outbox.OutboxEvent">
+        SELECT id, event_id, tenant_id, aggregate_type, aggregate_id,
+            aggregate_version, event_type, schema_version, payload,
+            retry_count, created_at
+        FROM sys_outbox_event
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+          AND event_status = 'CLAIMED' AND claim_owner = #{owner}
+        ORDER BY id
+    </select>
+
+    <update id="markPublished">
+        UPDATE sys_outbox_event
+        SET event_status = 'PUBLISHED', published_at = #{publishedAt}, claim_owner = NULL,
+            claim_until = NULL, next_retry_at = NULL, last_error_code = NULL,
+            version = version + 1
+        WHERE id = #{id} AND event_status = 'CLAIMED' AND claim_owner = #{owner}
+    </update>
+
+    <update id="reschedule">
+        UPDATE sys_outbox_event
+        SET event_status = 'PENDING', retry_count = #{retryCount},
+            next_retry_at = #{nextRetryAt}, claim_owner = NULL, claim_until = NULL,
+            last_error_code = #{errorCode}, version = version + 1
+        WHERE id = #{id} AND event_status = 'CLAIMED' AND claim_owner = #{owner}
+    </update>
+
+    <update id="markDead">
+        UPDATE sys_outbox_event
+        SET event_status = 'DEAD', retry_count = #{retryCount}, next_retry_at = NULL,
+            claim_owner = NULL, claim_until = NULL, last_error_code = #{errorCode},
+            version = version + 1
+        WHERE id = #{id} AND event_status = 'CLAIMED' AND claim_owner = #{owner}
+    </update>
+</mapper>

@@ -1,6 +1,7 @@
 package com.enterprise.iam.gateway.security;
 
 import com.enterprise.iam.common.security.headers.UntrustedIdentityHeaders;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Mono;
  * authentication or routing component can accidentally trust them.
  */
 @Component
+@ConditionalOnProperty(prefix = "iam.gateway.access-authentication", name = "enabled", havingValue = "true")
 public final class ExternalIdentityHeaderSanitizingFilter implements GlobalFilter, Ordered {
 
     @Override
